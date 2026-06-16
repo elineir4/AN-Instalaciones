@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Proyecto2026.BD/Proyecto2026.BD.csproj" />
+  <Project Path="Proyecto2026.Repositorio/Proyecto2026.Repositorio.csproj" />
+  <Project Path="Proyecto2026.Server/Proyecto2026.Server.Client/Proyecto2026.Server.Client.csproj" />
+  <Project Path="Proyecto2026.Server/Proyecto2026.Server/Proyecto2026.Server.csproj" />
+  <Project Path="Proyecto2026.Servicios/Proyecto2026.Servicios.csproj" />
+  <Project Path="Proyecto2026.Shared/Proyecto2026.Shared.csproj" />
+</Solution>
