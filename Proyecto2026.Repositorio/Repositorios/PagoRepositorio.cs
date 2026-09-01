@@ -61,4 +61,7 @@ public class PagoRepositorio : Repositorio<Pago>, IPagoRepositorio1
 
 
     }
+
+
+   
 }

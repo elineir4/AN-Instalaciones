@@ -71,6 +71,9 @@ namespace Proyecto2026.BD.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Salario")
+                        .HasColumnType("int");
+
                     b.Property<int>("Telefono")
                         .HasColumnType("int");
 

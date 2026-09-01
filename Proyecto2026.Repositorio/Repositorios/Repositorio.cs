@@ -58,6 +58,12 @@ public class Repositorio<E> : IRepositorio<E> where E : class
         return true;
     }
 
+    //obtener POR id
+    public async Task<E> ObtenerPorId(int id)
+    {
+        return await context.Set<E>().FindAsync(id);
+    }
+
 
 
 
