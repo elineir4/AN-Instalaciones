@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Proyecto2026.BD\Proyecto2026.BD.csproj" />
     <ProjectReference Include="..\..\Proyecto2026.Repositorio\Proyecto2026.Repositorio.csproj" />
+    <ProjectReference Include="..\..\Proyecto2026.Servicios\Proyecto2026.Servicios.csproj" />
     <ProjectReference Include="..\..\Proyecto2026.Shared\Proyecto2026.Shared.csproj" />
     <ProjectReference Include="..\Proyecto2026.Server.Client\Proyecto2026.Server.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.9" />
@@ -18,6 +19,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
 </Project>
