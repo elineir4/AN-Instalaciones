@@ -138,9 +138,14 @@ namespace Proyecto2026.BD.Migrations
                     b.Property<decimal>("MontoAbonado")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("TrabajoId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
+
+                    b.HasIndex("TrabajoId");
 
                     b.ToTable("Pagos");
                 });
@@ -193,7 +198,7 @@ namespace Proyecto2026.BD.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Estados")
+                    b.Property<string>("Estado")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -238,9 +243,14 @@ namespace Proyecto2026.BD.Migrations
                     b.Property<decimal>("Presupuesto")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("ReservaId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
+
+                    b.HasIndex("ReservaId");
 
                     b.ToTable("Trabajos");
                 });
@@ -290,7 +300,13 @@ namespace Proyecto2026.BD.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Proyecto2026.BD.Datos.Entity.Trabajo", "Trabajo")
+                        .WithMany()
+                        .HasForeignKey("TrabajoId");
+
                     b.Navigation("Cliente");
+
+                    b.Navigation("Trabajo");
                 });
 
             modelBuilder.Entity("Proyecto2026.BD.Datos.Entity.PagoEmpleado", b =>
@@ -331,7 +347,13 @@ namespace Proyecto2026.BD.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Proyecto2026.BD.Datos.Entity.Reserva", "Reserva")
+                        .WithMany()
+                        .HasForeignKey("ReservaId");
+
                     b.Navigation("Cliente");
+
+                    b.Navigation("Reserva");
                 });
 
             modelBuilder.Entity("Proyecto2026.BD.Datos.Entity.TrabajoEmpleado", b =>

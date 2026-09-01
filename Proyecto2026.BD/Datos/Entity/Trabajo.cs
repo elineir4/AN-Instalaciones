@@ -11,6 +11,8 @@ public class Trabajo : EntityBase
     public DateTime FechaFin {  get; set; }
     public decimal Presupuesto { get; set; }
     public string Planos { get; set; }
+    public int? ReservaId { get; set; }
+    public Reserva? Reserva { get; set; }
     public int ClienteId { get; set; }
     public Cliente Cliente{ get; set; }
 
