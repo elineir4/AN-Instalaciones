@@ -1,82 +1,68 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Proyecto2026.BD.Datos;
 using Proyecto2026.BD.Datos.Entity;
-using Proyecto2026.Shared.DTO;
 using Proyecto2026.Repositorio.Repositorios;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Proyecto2026.Shared.DTO;
 
 namespace Proyecto2026.Server.Controllers;
 
-[ApiController] 
+[ApiController]
 [Route("api/clientes")]
 public class ClienteController : ControllerBase
 {
-    private readonly AppDbContext context; //variable privada para almacenar el contexto de la base de datos
-    //esta se deja de usar ya que repositorio ya la adquiere
-    private readonly Repositorio<Cliente> repositorio; //variable privada para almacenar el repositorio de clientes
+    private readonly IClienteRepositorio repositorio;
 
-    public ClienteController(AppDbContext context, Repositorio<Cliente> repositorio) //inyectar el contexto de la base de datos en el constructor del controlador
+    public ClienteController(IClienteRepositorio repositorio)
     {
-        this.context = context;
         this.repositorio = repositorio;
-    } 
-
+    }
 
     [HttpPost("agregar")]
-    public async Task<ActionResult> AgregarCliente(Cliente cliente)
+    public async Task<ActionResult<int>> AgregarCliente([FromBody] Cliente cliente)
     {
-        var nuevocliente = await repositorio.Insert(cliente);
-        return Ok(nuevocliente);
+        try
+        {
+            var nuevoId = await repositorio.Insert(cliente);
+            return Ok(nuevoId);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error al agregar el cliente: {ex.Message}");
+        }
     }
 
-    [HttpDelete("eliminar")]
-    public async Task<ActionResult> EliminarCliente(int id) 
+    [HttpDelete("eliminar/{id:int}")]
+    public async Task<ActionResult> EliminarCliente(int id)
     {
-        var borrar = await repositorio.Delete(id);
-         return Ok(borrar);
-
+        var eliminado = await repositorio.Delete(id);
+        if (!eliminado)
+        {
+            return NotFound($"No existe el cliente con id {id}");
+        }
+        return Ok(eliminado);
     }
 
-
-
-    [HttpGet]
-    public async Task<ActionResult<List<Cliente>>> Get() //método para obtener todos los clientes
+    [HttpGet("obtenerclientes")]
+    public async Task<ActionResult<List<Cliente>>> Get()
     {
-        //var lista = await context.Clientes.ToListAsync(); //obtener todos los clientes de la base de datos
-          
-        var lista = await repositorio.Select(); //obtener todos los clientes de la base de datos usando el repositorio
-        if (lista == null)
-        {
-            return NotFound("No se encontro ningun elemento en la lista");
-        }
-        else
-        {
-            return Ok(lista);
-        }
+        var lista = await repositorio.Select();
+        return Ok(lista ?? new List<Cliente>());
     }
 
     [HttpGet("listaclientes")]
-    public async Task<ActionResult<List<ClienteDTO>>> listaClientes()
+    public async Task<ActionResult<List<ClienteDTO>>> ListaClientes()
     {
-      var lista = await context.Clientes.Select(p=> new ClienteDTO
-      {
-         id = p.Id,
-         NombreCliente = $"{p.Nombre}"
+        var clientes = await repositorio.ObtenerListaClientesAsync();
 
-      }).ToListAsync();
+        var listaDTO = (clientes ?? Enumerable.Empty<Cliente>())
+            .Select(p => new ClienteDTO
+            {
+                ClienteId = p.Id,
+                NombreCliente = $"{p.Nombre} {p.Apellido}".Trim(),
+                Apellido = p.Apellido,
+                Telefono = p.Telefono,
+                Email = p.Email
+            }).ToList();
 
-        if (lista == null)
-        {
-            return NotFound("No se encontro ningun elemento en la lista");
-
-        }
-        else 
-        {
-            return Ok(lista);
-        }
-
-
-        
+        return Ok(listaDTO);
     }
 }

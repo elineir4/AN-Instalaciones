@@ -1,0 +1,345 @@
+@page "/pagos"
+@rendermode InteractiveAuto
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Pages.Pagos.Components
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+@implements IDisposable
+
+<PageTitle>Pagos y Saldos - AN Instalaciones</PageTitle>
+
+<div class="pagos-container pb-5">
+    <!-- Tarjeta de Encabezado -->
+    <div class="card-custom header-card p-4 mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <div>
+                <div class="d-flex align-items-center gap-3 mb-1">
+                    <h1 class="header-title fs-3 fw-bold text-dark mb-0">Pagos y Saldos</h1>
+                    @if (!cargando && string.IsNullOrEmpty(errorCarga))
+                    {
+                        <span class="badge badge-header-dinamico">
+                            @(TotalClientesConDeuda == 1 ? "1 cliente con saldo" : $"{TotalClientesConDeuda} clientes con saldo")
+                        </span>
+                    }
+                </div>
+                <p class="header-subtitle text-muted mb-0">
+                    Controlá los saldos pendientes de tus clientes y registrá los pagos recibidos.
+                </p>
+            </div>
+            <div>
+                <button class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
+                        @onclick="() => CargarSaldosPendientes(mostrarSpinner: true)"
+                        disabled="@cargando"
+                        title="Actualizar saldos">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="@(cargando ? "spinner-rotate" : "")" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                        <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                    </svg>
+                    <span>Actualizar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fila de 2 Tarjetas de Resumen -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6">
+            <ResumenCard Titulo="Saldo pendiente total"
+                         Valor="@(cargando ? "..." : FormatoMonedaHelper.FormatearMoneda(SaldoPendienteTotalGeneral))"
+                         Subtitulo="Total adeudado por clientes"
+                         Variante="primary">
+                <Icono>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1H1zm7 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/>
+                        <path d="M0 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm3 0a2 2 0 0 1-2 2v4a2 2 0 0 1 2 2h10a2 2 0 0 1 2-2V7a2 2 0 0 1-2-2z"/>
+                    </svg>
+                </Icono>
+            </ResumenCard>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <ResumenCard Titulo="Clientes con deuda"
+                         Valor="@(cargando ? "..." : TotalClientesConDeuda.ToString())"
+                         Subtitulo="Clientes con saldo pendiente mayor a $0"
+                         Variante="info">
+                <Icono>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.24 2.24 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
+                    </svg>
+                </Icono>
+            </ResumenCard>
+        </div>
+    </div>
+
+    <!-- Estado de Error inicial al consultar saldospendientes -->
+    @if (!cargando && !string.IsNullOrWhiteSpace(errorCarga))
+    {
+        <div class="card-custom p-4 mb-4 border-danger">
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-danger fs-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
+                        <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+                    </svg>
+                </div>
+                <div class="flex-grow-1">
+                    <h5 class="fw-bold text-danger mb-1">Error al consultar saldos pendientes</h5>
+                    <p class="text-secondary small mb-2">@errorCarga</p>
+                    <button class="btn btn-danger btn-sm" @onclick="() => CargarSaldosPendientes(mostrarSpinner: true)">
+                        Reintentar
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Tarjeta Principal con Filtro y Tabla -->
+    <div class="card-custom main-card overflow-hidden">
+        <!-- Tarjeta / Barra de Filtros -->
+        <div class="filtros-container p-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+            <div class="input-busqueda-wrapper position-relative">
+                <span class="lupa-icono position-absolute top-50 start-0 translate-middle-y ps-3 text-muted">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                    </svg>
+                </span>
+                <input type="text"
+                       class="form-control input-busqueda-cliente ps-5"
+                       placeholder="Buscar cliente..."
+                       value="@terminoBusqueda"
+                       @oninput="OnBusquedaInput" />
+                @if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+                {
+                    <button class="btn-limpiar-busqueda position-absolute top-50 end-0 translate-middle-y pe-3 text-muted border-0 bg-transparent"
+                            @onclick="LimpiarBusqueda"
+                            title="Limpiar búsqueda">
+                        ✕
+                    </button>
+                }
+            </div>
+
+            <div class="chip-total-pendiente d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill">
+                <span class="chip-label text-muted small">Total pendiente:</span>
+                <span class="chip-monto fw-bold text-dark">
+                    @FormatoMonedaHelper.FormatearMoneda(TotalPendienteFiltrado)
+                </span>
+            </div>
+        </div>
+
+        <!-- Contenido: Spinner / Skeleton o Tabla -->
+        @if (cargando)
+        {
+            <div class="p-5 text-center">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <div class="text-secondary small fw-medium">Cargando saldos pendientes...</div>
+            </div>
+        }
+        else
+        {
+            <SaldosTable Clientes="@ClientesPaginados"
+                         OnRegistrarPago="@AbrirModalPago"
+                         EstaFiltrado="@(!string.IsNullOrWhiteSpace(terminoBusqueda))"
+                         OnLimpiarFiltro="@LimpiarBusqueda" />
+
+            <div class="border-top">
+                <Paginador PaginaActual="@paginaActual"
+                           TotalPaginas="@TotalPaginas"
+                           TotalItems="@ClientesFiltrados.Count"
+                           ItemsPorPagina="@ItemsPorPagina"
+                           OnPaginaCambiada="@CambiarPagina" />
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal para Registrar Pago -->
+<RegistrarPagoModal Visible="@modalPagoVisible"
+                    Cliente="@clienteSeleccionado"
+                    OnCerrar="@CerrarModalPago"
+                    OnPagoExitoso="@ProcesarPagoExitoso" />
+
+<!-- Toast Simple de Notificación -->
+<ToastSimple @bind-Visible="@toastVisible"
+             Mensaje="@toastMensaje"
+             DuracionMs="4000" />
+
+@code {
+    private List<ClienteSaldoItem> listaClientes = new();
+    private bool cargando = true;
+    private string? errorCarga;
+
+    private string terminoBusqueda = "";
+    private string terminoBusquedaDebounced = "";
+    private System.Threading.Timer? debounceTimer;
+
+    private int paginaActual = 1;
+    private const int ItemsPorPagina = 10;
+
+    private bool modalPagoVisible = false;
+    private ClienteSaldoItem? clienteSeleccionado;
+
+    private bool toastVisible = false;
+    private string toastMensaje = "";
+
+    // Totales calculados con la lista completa
+    private decimal SaldoPendienteTotalGeneral => listaClientes.Sum(c => c.SaldoPendiente);
+    private int TotalClientesConDeuda => listaClientes.Count(c => c.SaldoPendiente > 0);
+
+    // Lista filtrada por el término de búsqueda (insensible a mayúsculas y tildes)
+    private List<ClienteSaldoItem> ClientesFiltrados
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(terminoBusquedaDebounced))
+            {
+                return listaClientes;
+            }
+
+            var queryNormalizado = FormatoMonedaHelper.RemoverTildes(terminoBusquedaDebounced.Trim());
+
+            return listaClientes.Where(c =>
+            {
+                var nombreCompletoNormalizado = FormatoMonedaHelper.RemoverTildes(c.NombreCompleto);
+                return nombreCompletoNormalizado.Contains(queryNormalizado, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+        }
+    }
+
+    // Total de saldo pendiente según los clientes actualmente filtrados
+    private decimal TotalPendienteFiltrado => ClientesFiltrados.Sum(c => c.SaldoPendiente);
+
+    private int TotalPaginas
+    {
+        get
+        {
+            var total = (int)Math.Ceiling((double)ClientesFiltrados.Count / ItemsPorPagina);
+            return total < 1 ? 1 : total;
+        }
+    }
+
+    // Clientes correspondientes a la página activa
+    private List<ClienteSaldoItem> ClientesPaginados
+    {
+        get
+        {
+            return ClientesFiltrados
+                .Skip((paginaActual - 1) * ItemsPorPagina)
+                .Take(ItemsPorPagina)
+                .ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSaldosPendientes(mostrarSpinner: true);
+    }
+
+    private async Task CargarSaldosPendientes(bool mostrarSpinner = false)
+    {
+        if (mostrarSpinner)
+        {
+            cargando = true;
+            errorCarga = null;
+        }
+
+        try
+        {
+            // Llamada al endpoint existente GET /api/pagos/saldospendientes
+            var resp = await Http.GetAsync<List<ClienteSaldoItem>>("api/pagos/saldospendientes");
+
+            if (resp.Error)
+            {
+                errorCarga = resp.Mensaje;
+            }
+            else
+            {
+                errorCarga = null;
+                listaClientes = resp.Dato ?? new List<ClienteSaldoItem>();
+
+                // Si la página actual queda fuera de rango, ajustarla a la primera
+                if (paginaActual > TotalPaginas)
+                {
+                    paginaActual = 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorCarga = $"Error de comunicación: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnBusquedaInput(ChangeEventArgs e)
+    {
+        terminoBusqueda = e.Value?.ToString() ?? "";
+
+        // Debounce de 300 ms para filtrar con suavidad
+        debounceTimer?.Dispose();
+        debounceTimer = new System.Threading.Timer(async _ =>
+        {
+            terminoBusquedaDebounced = terminoBusqueda;
+            paginaActual = 1;
+            await InvokeAsync(StateHasChanged);
+        }, null, 300, System.Threading.Timeout.Infinite);
+    }
+
+    private void LimpiarBusqueda()
+    {
+        terminoBusqueda = "";
+        terminoBusquedaDebounced = "";
+        paginaActual = 1;
+    }
+
+    private void CambiarPagina(int nuevaPagina)
+    {
+        paginaActual = nuevaPagina;
+    }
+
+    private void AbrirModalPago(ClienteSaldoItem cliente)
+    {
+        clienteSeleccionado = cliente;
+        modalPagoVisible = true;
+    }
+
+    private void CerrarModalPago()
+    {
+        modalPagoVisible = false;
+        clienteSeleccionado = null;
+    }
+
+    private async Task ProcesarPagoExitoso((ClienteSaldoItem Cliente, decimal Monto, string MedioPago) info)
+    {
+        // Notificación de éxito
+        var montoFormateado = FormatoMonedaHelper.FormatearMoneda(info.Monto);
+        toastMensaje = $"Pago de {montoFormateado} registrado para {info.Cliente.NombreCompleto}";
+        toastVisible = true;
+
+        // Descontar inmediatamente en la lista local para reflejar el pago de forma reactiva e instantánea
+        var clienteLocal = listaClientes.FirstOrDefault(c => c.Id == info.Cliente.Id);
+        if (clienteLocal != null)
+        {
+            clienteLocal.SaldoPendiente -= info.Monto;
+            if (clienteLocal.SaldoPendiente <= 0)
+            {
+                listaClientes.Remove(clienteLocal);
+            }
+        }
+
+        StateHasChanged();
+
+        // Refrescar saldos desde la API para asegurar consistencia con la base de datos
+        await CargarSaldosPendientes(mostrarSpinner: false);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
+    }
+}

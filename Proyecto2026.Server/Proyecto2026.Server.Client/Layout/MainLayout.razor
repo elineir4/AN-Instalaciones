@@ -1,23 +1,47 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar-left">
+                <div class="search-box">
+                    <span class="bi bi-search search-icon"></span>
+                    <input type="text"
+                           class="search-input"
+                           placeholder="Buscar obras, remitos, técnicos..."
+                           aria-label="Buscar obras, remitos, técnicos..." />
+                </div>
+            </div>
 
-        <article class="content px-4">
+            <div class="topbar-right">
+                <button type="button" class="topbar-btn" title="Notificaciones" aria-label="Notificaciones">
+                    <span class="bi bi-bell"></span>
+                    <span class="notification-indicator"></span>
+                </button>
+                <button type="button" class="topbar-btn" title="Ayuda" aria-label="Ayuda">
+                    <span class="bi bi-question-circle"></span>
+                </button>
+
+                <div class="topbar-divider"></div>
+
+                <div class="user-block">
+                    <div class="user-avatar" title="Antonio - Jefe de Obra">
+                        <span>A</span>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name">Antonio</span>
+                        <span class="user-role">Jefe de Obra</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <article class="content">
             @Body
         </article>
     </main>
-</div>
-
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
 </div>

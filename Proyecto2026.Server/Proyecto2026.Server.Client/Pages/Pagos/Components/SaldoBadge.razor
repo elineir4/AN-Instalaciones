@@ -1,0 +1,42 @@
+<span class="badge-pill @PillClass">
+    <span class="badge-dot"></span>
+    @Texto
+</span>
+
+@code {
+    /// <summary>
+    /// Constante configurable del umbral para considerar un saldo como "Alto".
+    /// </summary>
+    public const decimal UmbralAltoDefecto = 200000m;
+
+    [Parameter] public decimal Saldo { get; set; }
+    [Parameter] public decimal UmbralAlto { get; set; } = UmbralAltoDefecto;
+
+    private string PillClass
+    {
+        get
+        {
+            if (Saldo <= 0)
+                return "pill-al-dia";
+
+            if (Saldo >= UmbralAlto)
+                return "pill-deuda-alta";
+
+            return "pill-deuda-moderada";
+        }
+    }
+
+    private string Texto
+    {
+        get
+        {
+            if (Saldo <= 0)
+                return "Al día";
+
+            if (Saldo >= UmbralAlto)
+                return "Deuda Alta";
+
+            return "Pendiente";
+        }
+    }
+}

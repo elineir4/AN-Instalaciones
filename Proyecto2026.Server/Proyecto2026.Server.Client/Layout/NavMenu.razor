@@ -1,42 +1,60 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Proyecto2026.Server</a>
+<div class="top-row navbar navbar-dark">
+    <div class="container-fluid d-flex align-items-center justify-content-between">
+        <a class="navbar-brand d-flex align-items-center gap-3 text-decoration-none" href="">
+            <div class="brand-logo-box">
+                <span class="bi bi-wrench"></span>
+            </div>
+            <div class="brand-info d-flex flex-column">
+                <span class="brand-title">AN Instalaciones</span>
+                <span class="brand-subtitle">SANITARIAS Y GAS</span>
+            </div>
+        </a>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<input type="checkbox" title="Menú de navegación" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill me-3"></span>
+                <span>Inicio</span>
             </NavLink>
         </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="clientes">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Clientes
+                <span class="bi bi-people-fill me-3"></span>
+                <span>Clientes</span>
             </NavLink>
         </div>
-       
-        <div class="nav-item px-3">
-            <a class="nav-link" href="https://localhost:7116/swagger" target="_blank">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Swagger
+        <div class="nav-item">
+            <NavLink class="nav-link" href="empleados">
+                <span class="bi bi-person-badge-fill me-3"></span>
+                <span>Empleados</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="pagos">
+                <span class="bi bi-wallet2 me-3"></span>
+                <span>Pagos</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <a class="nav-link" href="swagger/index.html" target="_blank">
+                <span class="bi bi-code-slash me-3"></span>
+                <span>Swagger</span>
             </a>
         </div>
     </nav>
-</div>
 
+    <div class="sidebar-footer">
+        <div class="gas-badge">
+            <div class="gas-badge-left">
+                <span class="bi bi-patch-check-fill gas-icon"></span>
+                <span class="gas-title">Matrícula Oficial Gas</span>
+            </div>
+            <span class="gas-chip">ACTIVA</span>
+        </div>
+    </div>
+</div>

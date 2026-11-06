@@ -1,0 +1,64 @@
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Helpers
+
+<tr class="saldo-row align-middle">
+    <td class="col-cliente">
+        <div class="d-flex align-items-center">
+            <div class="cliente-avatar me-3">
+                @InicialesCliente
+            </div>
+            <div>
+                <div class="cliente-nombre fw-semibold text-dark">
+                    @Cliente.NombreCompleto
+                </div>
+                <div class="cliente-contacto small text-muted">
+                    @if (!string.IsNullOrWhiteSpace(Cliente.Telefono))
+                    {
+                        <span class="me-2">📞 @Cliente.Telefono</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Cliente.Email))
+                    {
+                        <span>✉️ @Cliente.Email</span>
+                    }
+                    @if (string.IsNullOrWhiteSpace(Cliente.Telefono) && string.IsNullOrWhiteSpace(Cliente.Email))
+                    {
+                        <span class="fst-italic text-secondary">Sin datos de contacto</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </td>
+    <td class="col-saldo text-end fw-bold text-dark">
+        @FormatoMonedaHelper.FormatearMoneda(Cliente.SaldoPendiente)
+    </td>
+    <td class="col-estado text-center">
+        <SaldoBadge Saldo="@Cliente.SaldoPendiente" />
+    </td>
+    <td class="col-acciones text-end">
+        <button class="btn btn-registrar-pago btn-sm d-inline-flex align-items-center gap-2"
+                @onclick="() => OnRegistrarPago.InvokeAsync(Cliente)"
+                title="Registrar pago para @Cliente.NombreCompleto">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1z"/>
+                <path d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/>
+            </svg>
+            <span>Registrar pago</span>
+        </button>
+    </td>
+</tr>
+
+@code {
+    [Parameter, EditorRequired] public ClienteSaldoItem Cliente { get; set; } = default!;
+    [Parameter] public EventCallback<ClienteSaldoItem> OnRegistrarPago { get; set; }
+
+    private string InicialesCliente
+    {
+        get
+        {
+            var p1 = !string.IsNullOrWhiteSpace(Cliente.Nombre) ? Cliente.Nombre[0].ToString().ToUpper() : "";
+            var p2 = !string.IsNullOrWhiteSpace(Cliente.Apellido) ? Cliente.Apellido[0].ToString().ToUpper() : "";
+            var ini = $"{p1}{p2}";
+            return string.IsNullOrEmpty(ini) ? "CL" : ini;
+        }
+    }
+}

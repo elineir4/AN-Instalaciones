@@ -2,7 +2,7 @@
 
 namespace Proyecto2026.Repositorio.Repositorios
 {
-    public interface IPagoRepositorio1
+    public interface IPagoRepositorio1 : IRepositorio<Pago>
     {
         Task<List<Cliente>> ClientesSaldoPendiente();
         Task<Cliente> ObtenerClienteId(int clienteId);

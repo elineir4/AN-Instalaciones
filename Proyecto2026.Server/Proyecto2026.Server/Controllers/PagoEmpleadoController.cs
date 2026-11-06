@@ -38,20 +38,20 @@ public class PagoEmpleadoController : ControllerBase
     [HttpPost("registrar")]
     public async Task<ActionResult> RegistrarPagoEmpleado(PagoEmpleadoDTO dto)
     {
-        var empleado = await repositorio.ObtenerEmpleadoPorId(dto.empleadoId);
+        var empleado = await repositorio.ObtenerEmpleadoPorId(dto.EmpleadoId);
 
         if (empleado == null)
             return NotFound("No se encontró el empleado indicado.");
 
-        if (dto.montoAbonado > empleado.Salario)
+        if (dto.Monto   > empleado.Salario)
             return BadRequest("El monto ingresado supera el saldo pendiente.");
 
         var pago = new PagoEmpleado
         {
-            EmpleadoId = dto.empleadoId,
-            Monto = dto.montoAbonado,
+            EmpleadoId = dto.EmpleadoId,
+            Monto = dto.Monto,
             FechaPago = DateTime.Now,
-            MedioPago = dto.medioPago
+            MedioPago = dto.MedioPago
         };
 
         var pagoRegistrado = await repositorio.RegistrarPagoEmpleado(pago);

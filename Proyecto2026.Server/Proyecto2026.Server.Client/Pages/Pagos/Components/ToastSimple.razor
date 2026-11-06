@@ -1,0 +1,58 @@
+@implements IDisposable
+
+@if (Visible)
+{
+    <div class="toast-custom-container" aria-live="polite" aria-atomic="true">
+        <div class="toast-custom shadow-lg d-flex align-items-center justify-content-between p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="toast-icon-circle bg-success text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="toast-title fw-bold text-dark small mb-0">¡Pago registrado con éxito!</div>
+                    <div class="toast-message text-secondary small">@Mensaje</div>
+                </div>
+            </div>
+            <button type="button" class="btn-close ms-3 small" @onclick="Cerrar" aria-label="Cerrar"></button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Mensaje { get; set; } = string.Empty;
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public int DuracionMs { get; set; } = 4000;
+
+    private System.Threading.Timer? timerAutoCierre;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible)
+        {
+            timerAutoCierre?.Dispose();
+            timerAutoCierre = new System.Threading.Timer(async _ =>
+            {
+                await InvokeAsync(Cerrar);
+            }, null, DuracionMs, System.Threading.Timeout.Infinite);
+        }
+        else
+        {
+            timerAutoCierre?.Dispose();
+            timerAutoCierre = null;
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    public void Dispose()
+    {
+        timerAutoCierre?.Dispose();
+    }
+}

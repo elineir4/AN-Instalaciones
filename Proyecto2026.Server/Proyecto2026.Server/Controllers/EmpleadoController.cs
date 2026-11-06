@@ -1,64 +1,53 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
-using Proyecto2026.BD.Datos;
+﻿using Microsoft.AspNetCore.Mvc;
 using Proyecto2026.BD.Datos.Entity;
 using Proyecto2026.Repositorio.Repositorios;
-using Microsoft.EntityFrameworkCore;
 
 namespace Proyecto2026.Server.Controllers;
 
 [ApiController]
 [Route("api/empleados")]
-
 public class EmpleadoController : ControllerBase
 {
+    private readonly IEmpleadoRepositorio repositorio;
 
-    private readonly Repositorio<Empleado> repositorio;
-
-    public EmpleadoController(Repositorio<Empleado> repositorio)
+    public EmpleadoController(IEmpleadoRepositorio repositorio)
     {
         this.repositorio = repositorio;
     }
-
 
     [HttpGet("lista")]
     public async Task<ActionResult<List<Empleado>>> ListaEmpleados()
     {
         var lista = await repositorio.Select();
-        if (lista == null)
-        {
-            return NotFound("No se encontro ningun elemento en la lista");
-        }
-        else
-        {
-            return Ok(lista);
-        }
+        return Ok(lista ?? new List<Empleado>());
     }
 
-    [HttpGet("empleado/{id}")]
+    [HttpGet("empleado/{id:int}")]
     public async Task<ActionResult<Empleado>> ObtenerEmpleado(int id)
     {
-        var empleado = await repositorio.ObtenerPorId(id);
+        var empleado = await repositorio.ObtenerPorIdAsync(id);
         if (empleado == null)
         {
             return NotFound("No se encontro el empleado con ese ID");
         }
-        else
-        {
-            return Ok(empleado);
-        }
+        return Ok(empleado);
     }
 
     [HttpPost("agregar")]
-    public async Task<ActionResult<Empleado>> AgregarEmpleado(Empleado empleado)
+    public async Task<ActionResult<Empleado>> AgregarEmpleado([FromBody] Empleado empleado)
     {
-        var nuevoempleado = await repositorio.Insert(empleado);
-        return Ok(nuevoempleado);
-
+        try
+        {
+            var nuevoEmpleado = await repositorio.Insert(empleado);
+            return Ok(nuevoEmpleado);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error al agregar el empleado: {ex.Message}");
+        }
     }
 
-
-    [HttpDelete("eliminar/{id}")]
+    [HttpDelete("eliminar/{id:int}")]
     public async Task<ActionResult<bool>> EliminarEmpleado(int id)
     {
         var eliminado = await repositorio.Delete(id);
@@ -66,10 +55,6 @@ public class EmpleadoController : ControllerBase
         {
             return NotFound("No se encontro el empleado con ese ID");
         }
-        else
-        {
-            return Ok(true);
-        }
+        return Ok(true);
     }
-
 }

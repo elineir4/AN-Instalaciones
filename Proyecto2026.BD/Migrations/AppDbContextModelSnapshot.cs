@@ -44,8 +44,8 @@ namespace Proyecto2026.BD.Migrations
                     b.Property<decimal>("SaldoPendiente")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("Telefono")
-                        .HasColumnType("int");
+                    b.Property<string>("Telefono")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -74,8 +74,8 @@ namespace Proyecto2026.BD.Migrations
                     b.Property<int>("Salario")
                         .HasColumnType("int");
 
-                    b.Property<int>("Telefono")
-                        .HasColumnType("int");
+                    b.Property<string>("Telefono")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

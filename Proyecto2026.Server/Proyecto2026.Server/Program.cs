@@ -5,6 +5,7 @@ using Proyecto2026.BD.Datos.Entity;
 using Proyecto2026.Repositorio.Repositorios;
 using Proyecto2026.Server.Client.Pages;
 using Proyecto2026.Server.Components;
+using Proyecto2026.Servicios.ServicioHTTP;
 
 var builder = WebApplication.CreateBuilder(args);// Crear un generador de aplicaciones web
                                                  // con los argumentos de línea de comandos
@@ -38,8 +39,14 @@ builder.Services.AddScoped(sp =>
 #endregion
 
 #region Inyeccion de dependencias
-builder.Services.AddScoped<Repositorio<Cliente>, Repositorio<Cliente>>();
-builder.Services.AddScoped<PagoRepositorio, PagoRepositorio>(); 
+builder.Services.AddScoped<IHttpService, HttpService>();
+builder.Services.AddScoped<IPagoEmpleadoRepositorio, PagoEmpleadoRepositorio>();
+builder.Services.AddScoped<IPagoRepositorio1, PagoRepositorio>(); 
+builder.Services.AddScoped<ITrabajoRepositorio, TrabajoRepositorio>();
+builder.Services.AddScoped<IReservaRepositorio, ReservaRepositorio>();
+builder.Services.AddScoped<IClienteRepositorio, ClienteRepositorio>();
+builder.Services.AddScoped<IEmpleadoRepositorio, EmpleadoRepositorio>();
+
 #endregion
 
 

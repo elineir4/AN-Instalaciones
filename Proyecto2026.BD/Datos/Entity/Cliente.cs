@@ -8,7 +8,7 @@ public class Cliente : EntityBase
 {
     public required string Nombre { get; set; }
     public required string Apellido { get; set; }
-    public int Telefono { get; set; }
+    public string? Telefono { get; set; }
     public string? Email { get; set; }
     public decimal SaldoPendiente { get; set; }
 }

@@ -1,0 +1,80 @@
+<div class="paginador-container d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 py-3 px-2">
+    <div class="paginador-info text-muted small">
+        @if (TotalItems == 0)
+        {
+            <span>Sin clientes para mostrar</span>
+        }
+        else
+        {
+            <span>Mostrando <strong>@Desde</strong> a <strong>@Hasta</strong> de <strong>@TotalItems</strong> clientes</span>
+        }
+    </div>
+
+    @if (TotalPaginas > 1)
+    {
+        <nav aria-label="Navegación de páginas">
+            <ul class="pagination pagination-sm mb-0 align-items-center gap-1">
+                <!-- Botón Anterior -->
+                <li class="page-item @(PaginaActual <= 1 ? "disabled" : "")">
+                    <button class="page-link btn-paginador"
+                            @onclick="() => CambiarPagina(PaginaActual - 1)"
+                            disabled="@(PaginaActual <= 1)"
+                            aria-label="Página anterior">
+                        &lsaquo; Anterior
+                    </button>
+                </li>
+
+                <!-- Botones numéricos de página -->
+                @for (int i = 1; i <= TotalPaginas; i++)
+                {
+                    var p = i;
+                    // Mostrar páginas cercanas a la actual para no desbordar si hay muchas
+                    if (p == 1 || p == TotalPaginas || (p >= PaginaActual - 2 && p <= PaginaActual + 2))
+                    {
+                        <li class="page-item @(p == PaginaActual ? "active" : "")">
+                            <button class="page-link btn-paginador @(p == PaginaActual ? "pagina-activa" : "")"
+                                    @onclick="() => CambiarPagina(p)">
+                                @p
+                            </button>
+                        </li>
+                    }
+                    else if (p == PaginaActual - 3 || p == PaginaActual + 3)
+                    {
+                        <li class="page-item disabled">
+                            <span class="page-link btn-paginador border-0 bg-transparent">...</span>
+                        </li>
+                    }
+                }
+
+                <!-- Botón Siguiente -->
+                <li class="page-item @(PaginaActual >= TotalPaginas ? "disabled" : "")">
+                    <button class="page-link btn-paginador"
+                            @onclick="() => CambiarPagina(PaginaActual + 1)"
+                            disabled="@(PaginaActual >= TotalPaginas)"
+                            aria-label="Página siguiente">
+                        Siguiente &rsaquo;
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>
+
+@code {
+    [Parameter] public int PaginaActual { get; set; } = 1;
+    [Parameter] public int TotalPaginas { get; set; } = 1;
+    [Parameter] public int TotalItems { get; set; } = 0;
+    [Parameter] public int ItemsPorPagina { get; set; } = 10;
+    [Parameter] public EventCallback<int> OnPaginaCambiada { get; set; }
+
+    private int Desde => TotalItems == 0 ? 0 : ((PaginaActual - 1) * ItemsPorPagina) + 1;
+    private int Hasta => Math.Min(PaginaActual * ItemsPorPagina, TotalItems);
+
+    private async Task CambiarPagina(int nuevaPagina)
+    {
+        if (nuevaPagina >= 1 && nuevaPagina <= TotalPaginas && nuevaPagina != PaginaActual)
+        {
+            await OnPaginaCambiada.InvokeAsync(nuevaPagina);
+        }
+    }
+}

@@ -1,0 +1,72 @@
+﻿@page "/clientes"
+@using System.Text.Json
+@using Proyecto2026.Shared.DTO
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+
+<h3>Clientes</h3>
+<br />
+
+<table>
+    <thead>
+        <tr>
+            <th>Clientes</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (clientes == null)
+        {
+            <tr>
+                <td>Cargando...</td>
+            </tr>
+        }
+        else if (clientes.Count == 0)
+        {
+            <tr>
+                <td>No hay clientes disponibles.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var cliente in clientes)
+            {
+                <tr>
+                    <td>@cliente.NombreCliente</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<p>@mensaje</p>
+
+@code {
+    List<ClienteDTO> clientes;
+    private string mensaje = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await leerClientes();
+    }
+
+    private async Task leerClientes()
+    {
+        try
+        {
+            var response = await Http.GetAsync<List<ClienteDTO>>("api/cliente/listaclientes");
+
+            if (response.Error)
+            {
+                mensaje = response.Mensaje;
+            }
+            else
+            {
+                clientes = response.Dato;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error al leer los clientes: {ex.Message}";
+        }
+    }
+}
