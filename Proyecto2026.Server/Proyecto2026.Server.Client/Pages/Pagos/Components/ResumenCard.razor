@@ -1,0 +1,39 @@
+<div class="resumen-card @CardClass">
+    <div class="resumen-card-body d-flex align-items-center justify-content-between">
+        <div class="resumen-info">
+            <span class="resumen-titulo text-uppercase">@Titulo</span>
+            <div class="resumen-valor my-1">@Valor</div>
+            @if (!string.IsNullOrWhiteSpace(Subtitulo))
+            {
+                <span class="resumen-subtitulo text-muted">@Subtitulo</span>
+            }
+        </div>
+        <div class="resumen-icono-container @IconoBgClass">
+            @if (Icono != null)
+            {
+                @Icono
+            }
+            else
+            {
+                <span class="resumen-icono-default">📊</span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Valor { get; set; } = string.Empty;
+    [Parameter] public string? Subtitulo { get; set; }
+    [Parameter] public RenderFragment? Icono { get; set; }
+    [Parameter] public string Variante { get; set; } = "primary"; // primary, info, warning, danger
+    [Parameter] public string CardClass { get; set; } = string.Empty;
+
+    private string IconoBgClass => Variante switch
+    {
+        "warning" => "icono-bg-warning",
+        "danger" => "icono-bg-danger",
+        "info" => "icono-bg-info",
+        _ => "icono-bg-primary"
+    };
+}

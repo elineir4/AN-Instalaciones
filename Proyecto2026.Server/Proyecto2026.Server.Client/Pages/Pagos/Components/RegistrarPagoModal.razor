@@ -1,0 +1,387 @@
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Shared.DTO
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+
+@if (Visible && Cliente != null)
+{
+    <div class="modal-backdrop-custom fade-in" @onclick="Cerrar"></div>
+
+    <div class="modal-dialog-custom" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+        <div class="modal-content-custom shadow-lg">
+            <!-- Header del Modal -->
+            <div class="modal-header-custom d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-0" id="modalTitulo">Registrar Pago</h5>
+                    <span class="modal-subtitle text-muted small">Cliente: <strong class="text-dark">@Cliente.NombreCompleto</strong></span>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="Cerrar" aria-label="Cerrar" disabled="@isEnviando">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Cuerpo del Modal -->
+            <div class="modal-body-custom">
+                @if (cargandoSaldo)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary spinner-border-sm mb-2" role="status"></div>
+                        <div class="small text-muted">Consultando saldo actual del cliente...</div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Alerta de Error de Servidor (400 / 404 / 500) -->
+                    @if (!string.IsNullOrWhiteSpace(errorServidor))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small mb-3" role="alert">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="flex-shrink-0" viewBox="0 0 16 16">
+                                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                            </svg>
+                            <div>@errorServidor</div>
+                        </div>
+                    }
+
+                    <!-- Bloque con Saldo Actual -->
+                    <div class="saldo-actual-box p-3 mb-3 rounded-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted text-uppercase small fw-semibold d-block">Saldo pendiente actual</span>
+                            <span class="fs-4 fw-bold text-dark">@FormatoMonedaHelper.FormatearMoneda(saldoActual)</span>
+                        </div>
+                        <div class="saldo-box-pill">
+                            <span class="badge bg-primary-subtle text-primary fw-medium px-2 py-1">
+                                ID Cliente: @Cliente.Id
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Input Monto Abonado -->
+                    <div class="mb-3">
+                        <label for="inputMonto" class="form-label fw-semibold text-dark small mb-1">
+                            Monto abonado <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light fw-bold text-secondary">$</span>
+                            <input id="inputMonto"
+                                   type="number"
+                                   step="0.01"
+                                   min="0.01"
+                                   max="@saldoActual"
+                                   class="form-control @(errorMonto != null ? "is-invalid" : "")"
+                                   placeholder="0.00"
+                                   value="@montoInputString"
+                                   @oninput="OnMontoInputChanged"
+                                   disabled="@isEnviando" />
+                            <button class="btn btn-outline-secondary btn-sm px-3 fw-semibold"
+                                    type="button"
+                                    @onclick="PagarSaldoTotal"
+                                    disabled="@(isEnviando || saldoActual <= 0)">
+                                Pagar saldo total
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(errorMonto))
+                        {
+                            <div class="text-danger small mt-1 d-flex align-items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+                                </svg>
+                                <span>@errorMonto</span>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Select Medio de Pago -->
+                    <div class="mb-3">
+                        <label for="selectMedioPago" class="form-label fw-semibold text-dark small mb-1">
+                            Medio de pago <span class="text-danger">*</span>
+                        </label>
+                        <select id="selectMedioPago"
+                                class="form-select @(errorMedioPago != null ? "is-invalid" : "")"
+                                value="@medioPago"
+                                @onchange="OnMedioPagoChanged"
+                                disabled="@isEnviando">
+                            <option value="">-- Seleccionar medio de pago --</option>
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                            <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+                            <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                            <option value="Cheque">Cheque</option>
+                        </select>
+                        @if (!string.IsNullOrWhiteSpace(errorMedioPago))
+                        {
+                            <div class="text-danger small mt-1 d-flex align-items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+                                </svg>
+                                <span>@errorMedioPago</span>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Vista Previa Saldo Restante -->
+                    <div class="vista-previa-card p-3 rounded-3 mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-secondary small">Saldo restante luego del pago:</span>
+                            <span class="fw-bold @(saldoRestante == 0 ? "text-success" : "text-dark")">
+                                @FormatoMonedaHelper.FormatearMoneda(saldoRestante)
+                            </span>
+                        </div>
+                        @if (saldoRestante == 0 && montoAbonado > 0)
+                        {
+                            <div class="text-success small mt-1 d-flex align-items-center gap-1">
+                                <span>✓ El cliente saldará su deuda por completo.</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Footer con Botones -->
+            <div class="modal-footer-custom d-flex justify-content-end gap-2 p-3">
+                <button type="button" class="btn btn-light px-3" @onclick="Cerrar" disabled="@isEnviando">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="btn btn-confirmar-pago px-4 d-inline-flex align-items-center gap-2"
+                        @onclick="ConfirmarPago"
+                        disabled="@(isEnviando || cargandoSaldo)">
+                    @if (isEnviando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Registrando...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar pago</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public ClienteSaldoItem? Cliente { get; set; }
+    [Parameter] public EventCallback OnCerrar { get; set; }
+    [Parameter] public EventCallback<(ClienteSaldoItem Cliente, decimal Monto, string MedioPago)> OnPagoExitoso { get; set; }
+
+    private decimal saldoActual = 0m;
+    private decimal montoAbonado = 0m;
+    private string montoInputString = "";
+    private string medioPago = "Efectivo";
+
+    private bool cargandoSaldo = false;
+    private bool isEnviando = false;
+
+    private string? errorMonto;
+    private string? errorMedioPago;
+    private string? errorServidor;
+
+    private decimal saldoRestante => Math.Max(0m, saldoActual - montoAbonado);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible && Cliente != null)
+        {
+            // Resetear estado al abrir
+            errorServidor = null;
+            errorMonto = null;
+            errorMedioPago = null;
+            montoAbonado = 0m;
+            montoInputString = "";
+            medioPago = "Efectivo";
+
+            await ConsultarSaldoActual();
+        }
+    }
+
+    private async Task ConsultarSaldoActual()
+    {
+        if (Cliente == null) return;
+
+        cargandoSaldo = true;
+        try
+        {
+            // Consultamos GET /api/pagos/cliente/{id}
+            var resp = await Http.GetAsync<ClienteSaldoItem>($"api/pagos/cliente/{Cliente.Id}");
+            if (resp.Error)
+            {
+                // Si la consulta falla, utilizamos el saldo provisto por la lista
+                saldoActual = Cliente.SaldoPendiente;
+            }
+            else if (resp.Dato != null)
+            {
+                saldoActual = resp.Dato.SaldoPendiente;
+            }
+            else
+            {
+                saldoActual = Cliente.SaldoPendiente;
+            }
+        }
+        catch
+        {
+            saldoActual = Cliente.SaldoPendiente;
+        }
+        finally
+        {
+            cargandoSaldo = false;
+            StateHasChanged();
+        }
+    }
+
+    private void PagarSaldoTotal()
+    {
+        montoAbonado = saldoActual;
+        montoInputString = saldoActual.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        errorMonto = null;
+        errorServidor = null;
+        StateHasChanged();
+    }
+
+    private void OnMontoInputChanged(ChangeEventArgs e)
+    {
+        montoInputString = e.Value?.ToString() ?? "";
+        errorServidor = null;
+
+        if (decimal.TryParse(montoInputString, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            montoAbonado = parsed;
+        }
+        else if (decimal.TryParse(montoInputString, out var parsedLocal))
+        {
+            montoAbonado = parsedLocal;
+        }
+        else
+        {
+            montoAbonado = 0m;
+        }
+
+        ValidarMonto();
+        StateHasChanged();
+    }
+
+    private void OnMedioPagoChanged(ChangeEventArgs e)
+    {
+        medioPago = e.Value?.ToString() ?? "";
+        errorServidor = null;
+        ValidarMedioPago();
+        StateHasChanged();
+    }
+
+    private bool ValidarMonto()
+    {
+        errorMonto = null;
+
+        if (montoAbonado <= 0)
+        {
+            errorMonto = "El monto debe ser mayor a cero.";
+            return false;
+        }
+
+        if (montoAbonado > saldoActual)
+        {
+            errorMonto = "El monto ingresado supera el saldo pendiente.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool ValidarMedioPago()
+    {
+        errorMedioPago = null;
+
+        if (string.IsNullOrWhiteSpace(medioPago))
+        {
+            errorMedioPago = "El medio de pago es obligatorio.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task ConfirmarPago()
+    {
+        errorServidor = null;
+        bool montoValido = ValidarMonto();
+        bool medioValido = ValidarMedioPago();
+
+        if (!montoValido || !medioValido)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        if (Cliente == null) return;
+
+        isEnviando = true;
+        StateHasChanged();
+
+        try
+        {
+            var pagoDto = new PagoDTO
+            {
+                ClienteId = Cliente.Id,
+                MontoAbonado = montoAbonado,
+                MedioPago = medioPago
+            };
+
+            var resp = await Http.PostAsync<PagoDTO, PagoDTO>("api/pagos/registrar", pagoDto);
+
+            if (resp.Error)
+            {
+                // El servidor devuelve errores 400/404 como texto plano en el body
+                string mensaje = resp.Mensaje;
+                if (resp.Response?.Content != null)
+                {
+                    try
+                    {
+                        var bodyString = await resp.Response.Content.ReadAsStringAsync();
+                        if (!string.IsNullOrWhiteSpace(bodyString))
+                        {
+                            var trimmed = bodyString.Trim();
+                            if (trimmed.Length >= 2 && trimmed.StartsWith("\"") && trimmed.EndsWith("\""))
+                            {
+                                trimmed = trimmed[1..^1];
+                            }
+                            mensaje = trimmed;
+                            resp.Mensaje = trimmed;
+                        }
+                    }
+                    catch
+                    {
+                        // Fallback a resp.Mensaje
+                    }
+                }
+
+                errorServidor = mensaje;
+            }
+            else
+            {
+                // Pago exitoso: notificar al padre y cerrar
+                await OnPagoExitoso.InvokeAsync((Cliente, montoAbonado, medioPago));
+                await Cerrar();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorServidor = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isEnviando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isEnviando) return;
+        Visible = false;
+        await OnCerrar.InvokeAsync();
+    }
+}
