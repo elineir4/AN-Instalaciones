@@ -1,13 +1,12 @@
-﻿namespace Proyecto2026.Server.Controllers
+﻿namespace Proyecto2026.Shared.DTO
 {
     public class PagoEmpleadoDTO
     {
-        public int empleadoId { get; set; }
-        public decimal salario { get; set; }
-        public DateTime fechaPago { get; set; }
-        public decimal montoAbonado { get; set; }
-        public string medioPago { get; set; }
-
-
+        public int PagoEmpleadoId { get; set; }
+        public int EmpleadoId { get; set; }
+        public int? TrabajoId { get; set; }
+        public decimal Monto { get; set; }
+        public DateTime FechaPago { get; set; } = DateTime.Now;
+        public string MedioPago { get; set; } = string.Empty;
     }
 }

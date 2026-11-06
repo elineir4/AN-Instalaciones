@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Proyecto2026.Repositorio.Repositorios;
 
-public class PagoEmpleadoRepositorio : Repositorio<PagoEmpleadoRepositorio>
+public class PagoEmpleadoRepositorio : Repositorio<PagoEmpleado>, IPagoEmpleadoRepositorio
 {
 
     private readonly AppDbContext context;

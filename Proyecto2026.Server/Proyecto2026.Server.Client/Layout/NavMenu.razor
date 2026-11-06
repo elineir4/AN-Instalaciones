@@ -1,42 +1,35 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">Proyecto2026.Server</a>
+        <a class="navbar-brand" href="">Proyecto2026</a>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill me-2"></span> Inicio
             </NavLink>
         </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="clientes">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Clientes
+                <span class="bi bi-people-fill me-2"></span> Clientes
             </NavLink>
         </div>
-       
         <div class="nav-item px-3">
-            <a class="nav-link" href="https://localhost:7116/swagger" target="_blank">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Swagger
+            <NavLink class="nav-link" href="empleados">
+                <span class="bi bi-person-badge-fill me-2"></span> Empleados
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="pagos">
+                <span class="bi bi-cash-coin me-2"></span> Pagos
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <a class="nav-link" href="swagger/index.html" target="_blank">
+                <span class="bi bi-braces me-2"></span> Swagger
             </a>
         </div>
     </nav>
 </div>
-
