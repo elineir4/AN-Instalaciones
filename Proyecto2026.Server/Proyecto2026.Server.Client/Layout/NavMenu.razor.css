@@ -26,22 +26,24 @@
     margin: 0;
 }
 
+/* Caja del logo: fondo blanco para que el logo (PNG transparente con letras azules)
+   tenga contraste sobre el sidebar oscuro; ancho según el formato apaisado de la imagen */
 .brand-logo-box {
-    width: 2.35rem;
-    height: 2.35rem;
-    min-width: 2.35rem;
-    background-color: var(--primary-blue, #1D4ED8);
+    height: 2.6rem;
+    background-color: #FFFFFF;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #FFFFFF;
-    box-shadow: 0 2px 6px rgba(29, 78, 216, 0.35);
+    padding: 0.3rem 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
-.brand-logo-box .bi {
-    width: 1.2rem;
-    height: 1.2rem;
+.brand-logo-img {
+    height: 100%;
+    width: auto;
+    display: block;
+    object-fit: contain;
 }
 
 .brand-info {
@@ -249,11 +251,6 @@
 .bi-code-slash {
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0'/%3E%3C/svg%3E");
-}
-
-.bi-wrench {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M.102 2.223A3.004 3.004 0 0 0 3.78 5.897l6.341 6.252A3.003 3.003 0 0 0 13 16a3 3 0 1 0-.829-5.828L5.897 3.78A3.003 3.003 0 0 0 2.223.102a3.005 3.005 0 0 0-2.121.879 3.005 3.005 0 0 0-.88 2.122zM12.146 11.146a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 0 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M.102 2.223A3.004 3.004 0 0 0 3.78 5.897l6.341 6.252A3.003 3.003 0 0 0 13 16a3 3 0 1 0-.829-5.828L5.897 3.78A3.003 3.003 0 0 0 2.223.102a3.005 3.005 0 0 0-2.121.879 3.005 3.005 0 0 0-.88 2.122zM12.146 11.146a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 0 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
 }
 
 .bi-patch-check-fill {
