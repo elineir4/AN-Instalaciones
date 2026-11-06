@@ -1,0 +1,281 @@
+@using System.Text.RegularExpressions
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+
+@if (Visible)
+{
+    <div class="modal-backdrop-custom" @onclick="Cerrar"></div>
+
+    <div class="modal-dialog-custom" role="dialog" aria-modal="true" aria-labelledby="tituloNuevoCliente">
+        <div class="modal-content-custom shadow-lg">
+            <!-- Header del Modal -->
+            <div class="modal-header-custom d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-0" id="tituloNuevoCliente">Nuevo Cliente</h5>
+                    <span class="modal-subtitle text-muted small">Los campos con * son obligatorios.</span>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="Cerrar" aria-label="Cerrar" disabled="@isEnviando">✕</button>
+            </div>
+
+            <!-- Body del Modal -->
+            <div class="modal-body-custom">
+                @if (!string.IsNullOrWhiteSpace(errorServidor))
+                {
+                    <!-- Error del servidor (POST responde 400 como texto plano): se muestra sin cerrar el modal -->
+                    <div class="alert-error-custom d-flex align-items-start gap-2 mb-3 p-3 rounded-3" role="alert">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" class="flex-shrink-0 mt-1">
+                            <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z" />
+                            <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z" />
+                        </svg>
+                        <span>@errorServidor</span>
+                    </div>
+                }
+
+                <div class="row g-3">
+                    <!-- Nombre (obligatorio) -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoClienteNombre" class="form-label fw-semibold text-dark small mb-1">
+                            Nombre <span class="text-danger">*</span>
+                        </label>
+                        <input id="nuevoClienteNombre"
+                               type="text"
+                               class="form-control @(errorNombre != null ? "is-invalid" : "")"
+                               autocomplete="off"
+                               value="@nombre"
+                               @oninput="OnNombreInput"
+                               disabled="@isEnviando" />
+                        @if (errorNombre != null)
+                        {
+                            <div class="text-danger small mt-1">@errorNombre</div>
+                        }
+                    </div>
+
+                    <!-- Apellido (obligatorio) -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoClienteApellido" class="form-label fw-semibold text-dark small mb-1">
+                            Apellido <span class="text-danger">*</span>
+                        </label>
+                        <input id="nuevoClienteApellido"
+                               type="text"
+                               class="form-control @(errorApellido != null ? "is-invalid" : "")"
+                               autocomplete="off"
+                               value="@apellido"
+                               @oninput="OnApellidoInput"
+                               disabled="@isEnviando" />
+                        @if (errorApellido != null)
+                        {
+                            <div class="text-danger small mt-1">@errorApellido</div>
+                        }
+                    </div>
+
+                    <!-- Teléfono (opcional: números, espacios, guiones o "+") -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoClienteTelefono" class="form-label fw-semibold text-dark small mb-1">
+                            Teléfono
+                        </label>
+                        <input id="nuevoClienteTelefono"
+                               type="tel"
+                               class="form-control @(errorTelefono != null ? "is-invalid" : "")"
+                               autocomplete="off"
+                               value="@telefono"
+                               @oninput="OnTelefonoInput"
+                               disabled="@isEnviando" />
+                        @if (errorTelefono != null)
+                        {
+                            <div class="text-danger small mt-1">@errorTelefono</div>
+                        }
+                    </div>
+
+                    <!-- Email (opcional: formato válido si se completa) -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoClienteEmail" class="form-label fw-semibold text-dark small mb-1">
+                            Email
+                        </label>
+                        <input id="nuevoClienteEmail"
+                               type="email"
+                               class="form-control @(errorEmail != null ? "is-invalid" : "")"
+                               autocomplete="off"
+                               value="@email"
+                               @oninput="OnEmailInput"
+                               disabled="@isEnviando" />
+                        @if (errorEmail != null)
+                        {
+                            <div class="text-danger small mt-1">@errorEmail</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer con Botones -->
+            <div class="modal-footer-custom d-flex justify-content-end gap-2 p-3">
+                <button type="button" class="btn btn-light px-4" @onclick="Cerrar" disabled="@isEnviando">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="btn btn-guardar-cliente px-4 d-inline-flex align-items-center gap-2"
+                        @onclick="Guardar"
+                        disabled="@isEnviando">
+                    @if (isEnviando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span>Guardar</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnCerrar { get; set; }
+
+    /// <summary>Se invoca con el nombre completo del cliente creado (para el toast del padre).</summary>
+    [Parameter] public EventCallback<string> OnClienteCreado { get; set; }
+
+    private static readonly Regex RegexTelefono = new(@"^[0-9 +\-]+$");
+    private static readonly Regex RegexEmail = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
+
+    private string nombre = "";
+    private string apellido = "";
+    private string telefono = "";
+    private string email = "";
+
+    private string? errorNombre;
+    private string? errorApellido;
+    private string? errorTelefono;
+    private string? errorEmail;
+    private string? errorServidor;
+
+    private bool isEnviando = false;
+    private bool visibleAnterior;
+
+    protected override void OnParametersSet()
+    {
+        // Reinicia el formulario únicamente al abrir, no en cada re-render del padre
+        if (Visible && !visibleAnterior)
+        {
+            nombre = "";
+            apellido = "";
+            telefono = "";
+            email = "";
+            errorNombre = null;
+            errorApellido = null;
+            errorTelefono = null;
+            errorEmail = null;
+            errorServidor = null;
+            isEnviando = false;
+        }
+
+        visibleAnterior = Visible;
+    }
+
+    private void OnNombreInput(ChangeEventArgs e)
+    {
+        nombre = e.Value?.ToString() ?? "";
+        errorNombre = null;
+    }
+
+    private void OnApellidoInput(ChangeEventArgs e)
+    {
+        apellido = e.Value?.ToString() ?? "";
+        errorApellido = null;
+    }
+
+    private void OnTelefonoInput(ChangeEventArgs e)
+    {
+        telefono = e.Value?.ToString() ?? "";
+        errorTelefono = null;
+    }
+
+    private void OnEmailInput(ChangeEventArgs e)
+    {
+        email = e.Value?.ToString() ?? "";
+        errorEmail = null;
+    }
+
+    /// <summary>Validación en el front: obligatorios, email válido si se completa y teléfono con caracteres permitidos.</summary>
+    private bool Validar()
+    {
+        errorNombre = string.IsNullOrWhiteSpace(nombre) ? "El nombre es obligatorio." : null;
+        errorApellido = string.IsNullOrWhiteSpace(apellido) ? "El apellido es obligatorio." : null;
+
+        var telefonoLimpio = telefono.Trim();
+        errorTelefono = !string.IsNullOrWhiteSpace(telefonoLimpio) && !RegexTelefono.IsMatch(telefonoLimpio)
+            ? "El teléfono solo puede contener números, espacios, guiones o '+'."
+            : null;
+
+        var emailLimpio = email.Trim();
+        errorEmail = !string.IsNullOrWhiteSpace(emailLimpio) && !RegexEmail.IsMatch(emailLimpio)
+            ? "Ingresá un email válido."
+            : null;
+
+        return errorNombre == null && errorApellido == null && errorTelefono == null && errorEmail == null;
+    }
+
+    private async Task Guardar()
+    {
+        if (isEnviando) return;
+
+        errorServidor = null;
+
+        if (!Validar())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isEnviando = true;
+        StateHasChanged();
+
+        try
+        {
+            var payload = new ClienteAlta
+            {
+                Nombre = nombre.Trim(),
+                Apellido = apellido.Trim(),
+                Telefono = string.IsNullOrWhiteSpace(telefono) ? null : telefono.Trim(),
+                Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim()
+            };
+
+            // POST /api/clientes/agregar → devuelve el int del id nuevo
+            var resp = await Http.PostAsync<ClienteAlta, int>("api/clientes/agregar", payload);
+
+            if (resp.Error)
+            {
+                // Error del servidor: se muestra dentro del modal y no se cierra
+                errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+            }
+            else
+            {
+                // El envío terminó: se libera el guard para que Cerrar() pueda cerrar el modal
+                isEnviando = false;
+                var nombreCompleto = $"{payload.Nombre} {payload.Apellido}".Trim();
+                await OnClienteCreado.InvokeAsync(nombreCompleto);
+                await Cerrar();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorServidor = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isEnviando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isEnviando) return;
+        Visible = false;
+        await OnCerrar.InvokeAsync();
+    }
+}
