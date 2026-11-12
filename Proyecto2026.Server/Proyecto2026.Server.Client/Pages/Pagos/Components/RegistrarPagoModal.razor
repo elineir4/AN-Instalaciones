@@ -1,4 +1,4 @@
-@using Proyecto2026.Server.Client.Models
+﻿@using Proyecto2026.Server.Client.Models
 @using Proyecto2026.Server.Client.Helpers
 @using Proyecto2026.Shared.DTO
 @using Proyecto2026.Servicios.ServicioHTTP
@@ -176,6 +176,8 @@
 
     private bool cargandoSaldo = false;
     private bool isEnviando = false;
+    private bool visibleAnterior = false;
+    private int? clienteIdAnterior = null;
 
     private string? errorMonto;
     private string? errorMedioPago;
@@ -185,9 +187,12 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (Visible && Cliente != null)
+        if (Visible && Cliente != null && (!visibleAnterior || clienteIdAnterior != Cliente.Id))
         {
-            // Resetear estado al abrir
+            visibleAnterior = true;
+            clienteIdAnterior = Cliente.Id;
+
+            // Resetear estado únicamente al abrir el modal o cambiar de cliente
             errorServidor = null;
             errorMonto = null;
             errorMedioPago = null;
@@ -196,6 +201,11 @@
             medioPago = "Efectivo";
 
             await ConsultarSaldoActual();
+        }
+        else if (!Visible)
+        {
+            visibleAnterior = false;
+            clienteIdAnterior = null;
         }
     }
 
@@ -306,6 +316,8 @@
 
     private async Task ConfirmarPago()
     {
+        if (isEnviando || Cliente == null) return;
+
         errorServidor = null;
         bool montoValido = ValidarMonto();
         bool medioValido = ValidarMedioPago();
@@ -316,54 +328,34 @@
             return;
         }
 
-        if (Cliente == null) return;
-
         isEnviando = true;
         StateHasChanged();
 
         try
         {
+            var clientePagado = Cliente;
+            var monto = montoAbonado;
+            var medio = medioPago;
+
             var pagoDto = new PagoDTO
             {
-                ClienteId = Cliente.Id,
-                MontoAbonado = montoAbonado,
-                MedioPago = medioPago
+                ClienteId = clientePagado.Id,
+                MontoAbonado = monto,
+                MedioPago = medio
             };
 
-            var resp = await Http.PostAsync<PagoDTO, PagoDTO>("api/pagos/registrar", pagoDto);
+            var resp = await Http.PostAsync<PagoDTO, object>("api/pagos/registrar", pagoDto);
 
             if (resp.Error)
             {
                 // El servidor devuelve errores 400/404 como texto plano en el body
-                string mensaje = resp.Mensaje;
-                if (resp.Response?.Content != null)
-                {
-                    try
-                    {
-                        var bodyString = await resp.Response.Content.ReadAsStringAsync();
-                        if (!string.IsNullOrWhiteSpace(bodyString))
-                        {
-                            var trimmed = bodyString.Trim();
-                            if (trimmed.Length >= 2 && trimmed.StartsWith("\"") && trimmed.EndsWith("\""))
-                            {
-                                trimmed = trimmed[1..^1];
-                            }
-                            mensaje = trimmed;
-                            resp.Mensaje = trimmed;
-                        }
-                    }
-                    catch
-                    {
-                        // Fallback a resp.Mensaje
-                    }
-                }
-
-                errorServidor = mensaje;
+                errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
             }
             else
             {
                 // Pago exitoso: notificar al padre y cerrar
-                await OnPagoExitoso.InvokeAsync((Cliente, montoAbonado, medioPago));
+                isEnviando = false;
+                await OnPagoExitoso.InvokeAsync((clientePagado, monto, medio));
                 await Cerrar();
             }
         }

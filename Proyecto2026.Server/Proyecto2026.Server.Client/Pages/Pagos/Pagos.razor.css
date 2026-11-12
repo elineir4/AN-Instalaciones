@@ -273,25 +273,6 @@
     transform: translateY(-1px);
 }
 
-::deep .btn-confirmar-pago {
-    background-color: #0F2537 !important;
-    color: #FFFFFF !important;
-    border: none !important;
-    border-radius: 8px;
-    font-weight: 600;
-    padding: 0.55rem 1.25rem;
-    transition: background-color 0.15s ease;
-}
-
-::deep .btn-confirmar-pago:hover:not(:disabled) {
-    background-color: #1A365D !important;
-}
-
-::deep .btn-confirmar-pago:disabled {
-    background-color: #94A3B8 !important;
-    cursor: not-allowed;
-}
-
 /* Paginador */
 ::deep .btn-paginador {
     border-radius: 8px !important;
@@ -313,87 +294,6 @@
     background-color: #0F2537 !important;
     color: #FFFFFF !important;
     border-color: #0F2537 !important;
-}
-
-/* Modal Registrar Pago */
-::deep .modal-backdrop-custom {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(15, 37, 55, 0.5);
-    backdrop-filter: blur(2px);
-    z-index: 1050;
-}
-
-::deep .modal-dialog-custom {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 95%;
-    max-width: 520px;
-    z-index: 1055;
-    animation: modalSlideDown 0.2s ease-out;
-}
-
-@keyframes modalSlideDown {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -46%);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-    }
-}
-
-::deep .modal-content-custom {
-    background-color: #FFFFFF;
-    border-radius: 16px;
-    border: 1px solid #E8ECF2;
-    overflow: hidden;
-}
-
-::deep .modal-header-custom {
-    padding: 1.25rem 1.5rem;
-    background-color: #F8FAFC;
-    border-bottom: 1px solid #EDF2F7;
-}
-
-::deep .btn-close-modal {
-    background: transparent;
-    border: none;
-    font-size: 1.1rem;
-    color: #64748B;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-
-::deep .btn-close-modal:hover {
-    background-color: #EDF2F7;
-    color: #0F2537;
-}
-
-::deep .modal-body-custom {
-    padding: 1.5rem;
-}
-
-::deep .modal-footer-custom {
-    background-color: #F8FAFC;
-    border-top: 1px solid #EDF2F7;
-}
-
-::deep .saldo-actual-box {
-    background-color: #EDF3F8;
-    border: 1px solid #D6E4F0;
-}
-
-::deep .vista-previa-card {
-    background-color: #F8FAFC;
-    border: 1px dashed #CBD5E1;
 }
 
 /* Toast Simple */

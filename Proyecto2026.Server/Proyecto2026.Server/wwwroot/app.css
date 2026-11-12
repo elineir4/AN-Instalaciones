@@ -58,3 +58,169 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ==========================================================================
+   Modales Globales (NuevoClienteModal, RegistrarPagoModal, Confirmación)
+   ========================================================================== */
+.modal-backdrop-custom {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 37, 55, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 1050;
+    animation: modalBackdropFadeIn 0.15s ease-out;
+}
+
+@keyframes modalBackdropFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-dialog-custom {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    pointer-events: none;
+    z-index: 1055;
+    animation: modalDialogSlideIn 0.2s ease-out;
+}
+
+@keyframes modalDialogSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content-custom {
+    pointer-events: auto;
+    background-color: #FFFFFF;
+    border-radius: 14px;
+    border: 1px solid #E8ECF2;
+    box-shadow: 0 12px 32px rgba(15, 37, 55, 0.18);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-dialog-confirm .modal-content-custom {
+    max-width: 440px;
+}
+
+.modal-header-custom {
+    padding: 1.25rem 1.5rem;
+    background-color: #F8FAFC;
+    border-bottom: 1px solid #EDF2F7;
+}
+
+.btn-close-modal {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    color: #64748B;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.btn-close-modal:hover:not(:disabled) {
+    background-color: #EDF2F7;
+    color: #0F2537;
+}
+
+.modal-body-custom {
+    padding: 1.5rem;
+}
+
+.modal-footer-custom {
+    padding: 1rem 1.5rem;
+    background-color: #F8FAFC;
+    border-top: 1px solid #EDF2F7;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.modal-footer-custom .btn {
+    border-radius: 8px;
+}
+
+.alert-error-custom {
+    background-color: #FEE2E2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+    font-size: 0.875rem;
+}
+
+/* Botones primarios de modal ("Guardar" en Nuevo Cliente y "Confirmar pago" en Registrar Pago) */
+.btn-guardar-cliente,
+.btn-confirmar-pago {
+    background-color: #0F2537 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #0F2537 !important;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.5rem 1.25rem;
+    transition: background-color 0.15s ease;
+}
+
+.btn-guardar-cliente:hover:not(:disabled),
+.btn-confirmar-pago:hover:not(:disabled) {
+    background-color: #1A365D !important;
+    border-color: #1A365D !important;
+}
+
+.btn-guardar-cliente:disabled,
+.btn-confirmar-pago:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.btn-eliminar-confirm {
+    background-color: #DC2626 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #DC2626 !important;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: background-color 0.15s ease;
+}
+
+.btn-eliminar-confirm:hover:not(:disabled) {
+    background-color: #B91C1C !important;
+    border-color: #B91C1C !important;
+}
+
+.btn-eliminar-confirm:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Bloques internos de RegistrarPagoModal */
+.saldo-actual-box {
+    background-color: #EDF3F8;
+    border: 1px solid #D6E4F0;
+    border-radius: 10px;
+}
+
+.vista-previa-card {
+    background-color: #F8FAFC;
+    border: 1px dashed #CBD5E1;
+    border-radius: 10px;
+}

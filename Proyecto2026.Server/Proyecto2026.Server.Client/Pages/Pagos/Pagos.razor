@@ -151,18 +151,20 @@
             </div>
         }
     </div>
+
+    <!-- Modal para Registrar Pago -->
+    <RegistrarPagoModal Visible="@modalPagoVisible"
+                        Cliente="@clienteSeleccionado"
+                        OnCerrar="@CerrarModalPago"
+                        OnPagoExitoso="@ProcesarPagoExitoso" />
+
+    <!-- Toast Simple de Notificación -->
+    <ToastSimple @bind-Visible="@toastVisible"
+                 Titulo="@toastTitulo"
+                 Mensaje="@toastMensaje"
+                 EsError="@toastEsError"
+                 DuracionMs="4000" />
 </div>
-
-<!-- Modal para Registrar Pago -->
-<RegistrarPagoModal Visible="@modalPagoVisible"
-                    Cliente="@clienteSeleccionado"
-                    OnCerrar="@CerrarModalPago"
-                    OnPagoExitoso="@ProcesarPagoExitoso" />
-
-<!-- Toast Simple de Notificación -->
-<ToastSimple @bind-Visible="@toastVisible"
-             Mensaje="@toastMensaje"
-             DuracionMs="4000" />
 
 @code {
     private List<ClienteSaldoItem> listaClientes = new();
@@ -180,7 +182,9 @@
     private ClienteSaldoItem? clienteSeleccionado;
 
     private bool toastVisible = false;
+    private string toastTitulo = "";
     private string toastMensaje = "";
+    private bool toastEsError = false;
 
     // Totales calculados con la lista completa
     private decimal SaldoPendienteTotalGeneral => listaClientes.Sum(c => c.SaldoPendiente);
@@ -250,7 +254,9 @@
 
             if (resp.Error)
             {
-                errorCarga = resp.Mensaje;
+                // El body del error (texto plano del backend) da un mensaje mucho más útil
+                // que el texto genérico de estado que expone HttpResp.Mensaje.
+                errorCarga = await HttpErrorHelper.ObtenerMensajeError(resp);
             }
             else
             {
@@ -301,6 +307,14 @@
         paginaActual = nuevaPagina;
     }
 
+    private void MostrarToast(string titulo, string mensaje, bool esError)
+    {
+        toastTitulo = titulo;
+        toastMensaje = mensaje;
+        toastEsError = esError;
+        toastVisible = true;
+    }
+
     private void AbrirModalPago(ClienteSaldoItem cliente)
     {
         clienteSeleccionado = cliente;
@@ -317,8 +331,7 @@
     {
         // Notificación de éxito
         var montoFormateado = FormatoMonedaHelper.FormatearMoneda(info.Monto);
-        toastMensaje = $"Pago de {montoFormateado} registrado para {info.Cliente.NombreCompleto}";
-        toastVisible = true;
+        MostrarToast("Pago registrado con éxito", $"Pago de {montoFormateado} registrado para {info.Cliente.NombreCompleto}", esError: false);
 
         // Descontar inmediatamente en la lista local para reflejar el pago de forma reactiva e instantánea
         var clienteLocal = listaClientes.FirstOrDefault(c => c.Id == info.Cliente.Id);
