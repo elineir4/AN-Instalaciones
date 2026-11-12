@@ -110,10 +110,8 @@
                         <tr>
                             <th scope="col" class="th-cliente">CLIENTE</th>
                             <th scope="col" class="th-contacto">CONTACTO / TELÉFONO</th>
-                            @* TODO: columna PRESUPUESTO TOTAL omitida: la entidad Cliente (GET /api/clientes/obtenerclientes)
-                                   no expone ningún campo de presupuesto; el campo Presupuesto solo existe en ClienteDTO
-                                   (endpoint listaclientes), que no trae SaldoPendiente. *@
-                            @* TODO: columna OBRA / DIRECCIÓN omitida: la entidad Cliente no tiene campo de obra ni de dirección. *@
+                            @* Columnas PRESUPUESTO TOTAL y OBRA / DIRECCIÓN no existen: la entidad Cliente
+                                   (GET /api/clientes/obtenerclientes) no expone presupuesto, obra ni dirección. *@
                             <th scope="col" class="th-saldo text-end">SALDO PENDIENTE</th>
                             <th scope="col" class="th-acciones text-end">ACCIONES</th>
                         </tr>
@@ -419,7 +417,9 @@
 
             if (resp.Error)
             {
-                errorCarga = resp.Mensaje;
+                // El body del error (texto plano del backend) da un mensaje mucho más útil
+                // que el texto genérico de estado que expone HttpResp.Mensaje.
+                errorCarga = await HttpErrorHelper.ObtenerMensajeError(resp);
             }
             else
             {
@@ -476,10 +476,10 @@
     }
 
     // Alta exitosa: toast de éxito y recarga de la lista (el modal lo cierra el propio componente)
-    private void OnClienteCreado(string nombreCompleto)
+    private async Task OnClienteCreado(string nombreCompleto)
     {
         MostrarToast("Cliente creado con éxito", $"Se registró {nombreCompleto}.", esError: false);
-        _ = CargarClientes();
+        await CargarClientes(mostrarSpinner: false);
     }
 
     private void SolicitarEliminacion(ClienteSaldoItem cliente)
@@ -514,13 +514,8 @@
             }
             else
             {
-                listaClientes.RemoveAll(c => c.Id == cliente.Id);
-
-                // Si la página actual quedó vacía, retroceder hasta la última que tenga filas
-                if (paginaActual > TotalPaginas)
-                {
-                    paginaActual = TotalPaginas;
-                }
+                // Recargamos desde la API para que el listado quede sincronizado con la base
+                await CargarClientes(mostrarSpinner: false);
 
                 MostrarToast("Cliente eliminado con éxito", $"{cliente.NombreCompleto} fue eliminado.", esError: false);
             }
