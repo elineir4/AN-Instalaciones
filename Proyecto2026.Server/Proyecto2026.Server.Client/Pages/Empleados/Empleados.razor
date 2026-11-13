@@ -1,0 +1,520 @@
+@page "/empleados"
+@rendermode InteractiveAuto
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Pages.Empleados.Components
+@using Proyecto2026.Server.Client.Pages.Pagos.Components
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+@implements IDisposable
+
+<PageTitle>Empleados - AN Instalaciones Sanitarias y Gas</PageTitle>
+
+<div class="empleados-container container-fluid px-4 py-4">
+    <div class="d-flex flex-column gap-3">
+        <!-- Card de Encabezado: Título + Botón Nuevo Empleado -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <h1 class="h3 fw-bold text-dark mb-0">Empleados</h1>
+                        @if (!cargando && string.IsNullOrEmpty(errorCarga))
+                        {
+                            <span class="badge badge-soft-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                @(TotalRegistrados == 1 ? "1 registrado" : $"{TotalRegistrados} registrados")
+                            </span>
+                        }
+                    </div>
+                    <p class="text-muted mb-0 small">
+                        Administrá el personal de obra, matriculados, ayudantes y datos de contacto.
+                    </p>
+                </div>
+                <div>
+                    <button type="button"
+                            class="btn btn-dark d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold"
+                            id="btn-nuevo-empleado"
+                            style="background-color: #00162d;"
+                            @onclick="AbrirModalNuevo">
+                        <span class="material-symbols-outlined fs-5">add</span>
+                        <span>Nuevo Empleado</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado de Error al consultar /api/empleados/lista -->
+        @if (!cargando && !string.IsNullOrWhiteSpace(errorCarga))
+        {
+            <div class="card border-0 shadow-sm rounded-3 border-start border-danger border-4">
+                <div class="card-body p-4 d-flex align-items-center gap-3">
+                    <span class="material-symbols-outlined text-danger fs-1">warning</span>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-danger mb-1">Error al consultar los empleados</h5>
+                        <p class="text-secondary small mb-2">@errorCarga</p>
+                        <button type="button" class="btn btn-danger btn-sm" @onclick="() => CargarEmpleados(mostrarSpinner: true)">
+                            Reintentar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Card Barra de Filtro / Búsqueda + Contador Activos -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-3 d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-3">
+                <div class="input-group search-input-group flex-grow-1 position-relative" style="max-width: 480px;">
+                    <span class="input-group-text rounded-start-2">
+                        <span class="material-symbols-outlined fs-5">search</span>
+                    </span>
+                    <input class="form-control rounded-end-2 pe-4"
+                           id="empleado-search"
+                           placeholder="Buscar por nombre, DNI o especialidad..."
+                           type="text"
+                           value="@terminoBusqueda"
+                           @oninput="OnBusquedaInput" />
+                    @if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+                    {
+                        <button type="button"
+                                class="btn-limpiar-busqueda position-absolute top-50 end-0 translate-middle-y pe-3 text-muted border-0 bg-transparent"
+                                style="z-index: 5;"
+                                @onclick="LimpiarBusqueda"
+                                title="Limpiar búsqueda">
+                            ✕
+                        </button>
+                    }
+                </div>
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2" style="background-color: #eff4ff;">
+                    <span class="material-symbols-outlined text-primary fs-5">group</span>
+                    <span class="text-muted small fw-medium">Total:</span>
+                    <span class="text-dark small fw-bold">
+                        @(TotalFiltrados == 1 ? "1 empleado activo" : $"{TotalFiltrados} empleados activos")
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Empleados en Card -->
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            @if (cargando)
+            {
+                <div class="p-5 text-center">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <div class="text-secondary small fw-medium">Cargando empleados...</div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4" scope="col">EMPLEADO</th>
+                                <th scope="col">CONTACTO / TELÉFONO</th>
+                                <th scope="col">FECHA DE INGRESO</th>
+                                <th scope="col">ESTADO</th>
+                                <th scope="col">SALARIO</th>
+                                <th class="text-center pe-4" scope="col" style="width: 90px;">ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="empleados-tbody">
+                            @if (EmpleadosFiltrados.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5">
+                                        @if (HayBusquedaActiva)
+                                        {
+                                            <div class="d-flex flex-column align-items-center justify-content-center p-3">
+                                                <span class="material-symbols-outlined text-secondary fs-1 mb-2">search_off</span>
+                                                <h6 class="fw-bold text-dark mb-1">Sin resultados de búsqueda</h6>
+                                                <p class="text-muted small mb-3">No se encontraron empleados que coincidan con "@terminoBusquedaDebounced".</p>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="LimpiarBusqueda">
+                                                    Limpiar búsqueda
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex flex-column align-items-center justify-content-center p-3">
+                                                <span class="material-symbols-outlined text-secondary fs-1 mb-2">badge</span>
+                                                <h6 class="fw-bold text-dark mb-1">No hay empleados registrados</h6>
+                                                <p class="text-muted small mb-0">Usá el botón "Nuevo Empleado" para registrar al personal de obra.</p>
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var empleado in EmpleadosPaginados)
+                                {
+                                    <tr @key="empleado.Id">
+                                        <td class="ps-4">
+                                            <div class="fw-semibold text-dark">@empleado.NombreCompleto</div>
+                                            <div class="text-muted small">@empleado.Nombre · @empleado.Apellido</div>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(empleado.Telefono))
+                                            {
+                                                <div class="d-flex align-items-center gap-2 text-primary">
+                                                    <span class="material-symbols-outlined fs-5">call</span>
+                                                    <span class="text-dark small">@empleado.Telefono</span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small fst-italic">Sin teléfono</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-soft-role d-inline-flex align-items-center gap-1 px-2 py-1 rounded">
+                                                <span class="material-symbols-outlined text-primary" style="font-size: 15px;">calendar_month</span>
+                                                <span>@FormatearFecha(empleado.FechaIngreso)</span>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-soft-success d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill">
+                                                <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                                                <span>Activo</span>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1 text-muted small">
+                                                <span class="material-symbols-outlined fs-5 text-secondary">payments</span>
+                                                <span class="text-dark fw-medium">@FormatoMonto(empleado.Salario)</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center pe-4">
+                                            <button type="button"
+                                                    class="btn-delete"
+                                                    title="Eliminar Empleado"
+                                                    disabled="@eliminando"
+                                                    @onclick="() => SolicitarEliminacion(empleado)">
+                                                <span class="material-symbols-outlined fs-5">delete</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación y Resumen -->
+                <div class="card-footer bg-light border-0 py-3 px-4 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+                    <span class="text-muted small">
+                        Mostrando @EmpleadosPaginados.Count de @EmpleadosFiltrados.Count empleados
+                    </span>
+                    <nav aria-label="Navegación de páginas">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(paginaActual <= 1 ? "disabled" : "")">
+                                <button type="button" class="page-link" @onclick="() => CambiarPagina(paginaActual - 1)" disabled="@(paginaActual <= 1)">
+                                    Anterior
+                                </button>
+                            </li>
+                            @for (int i = 1; i <= TotalPaginas; i++)
+                            {
+                                var numPagina = i;
+                                <li aria-current="@(paginaActual == numPagina ? "page" : null)"
+                                    class="page-item @(paginaActual == numPagina ? "active" : "")">
+                                    <button type="button"
+                                            class="page-link"
+                                            style="@(paginaActual == numPagina ? "background-color: #00162d; border-color: #00162d; color: #fff;" : "")"
+                                            @onclick="() => CambiarPagina(numPagina)">
+                                        @numPagina
+                                    </button>
+                                </li>
+                            }
+                            <li class="page-item @(paginaActual >= TotalPaginas ? "disabled" : "")">
+                                <button type="button" class="page-link" @onclick="() => CambiarPagina(paginaActual + 1)" disabled="@(paginaActual >= TotalPaginas)">
+                                    Siguiente
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Modal de confirmación de eliminación -->
+    @if (empleadoAEliminar != null)
+    {
+        <div class="modal-backdrop-custom" @onclick="CancelarEliminacion"></div>
+
+        <div class="modal-dialog-custom modal-dialog-confirm" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmarEliminarEmpleado">
+            <div class="modal-content-custom shadow-lg">
+                <div class="modal-header-custom d-flex justify-content-between align-items-center">
+                    <h5 class="modal-title fw-bold text-dark mb-0" id="tituloConfirmarEliminarEmpleado">Eliminar empleado</h5>
+                    <button type="button" class="btn-close-modal" @onclick="CancelarEliminacion" aria-label="Cerrar" disabled="@eliminando">✕</button>
+                </div>
+                <div class="modal-body-custom">
+                    <p class="mb-2 text-dark">¿Eliminar a <strong>@empleadoAEliminar.NombreCompleto</strong>?</p>
+                    <p class="text-muted small mb-0">Esta acción no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer-custom d-flex justify-content-end gap-2 p-3">
+                    <button type="button" class="btn btn-light px-4" @onclick="CancelarEliminacion" disabled="@eliminando">
+                        Cancelar
+                    </button>
+                    <button type="button"
+                            class="btn btn-eliminar-confirm px-4 d-inline-flex align-items-center gap-2"
+                            @onclick="ConfirmarEliminacion"
+                            disabled="@eliminando">
+                        @if (eliminando)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Eliminando...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+                            <span>Eliminar</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Modal Nuevo Empleado -->
+    <NuevoEmpleadoModal Visible="@modalNuevoVisible"
+                        OnCerrar="@CerrarModalNuevo"
+                        OnEmpleadoCreado="@OnEmpleadoCreado" />
+
+    <!-- Toast de notificación -->
+    <ToastSimple @bind-Visible="@toastVisible"
+                 Titulo="@toastTitulo"
+                 Mensaje="@toastMensaje"
+                 EsError="@toastEsError"
+                 DuracionMs="4000" />
+</div>
+
+@code {
+    private List<EmpleadoItem> listaEmpleados = new();
+    private bool cargando = true;
+    private string? errorCarga;
+
+    private string terminoBusqueda = "";
+    private string terminoBusquedaDebounced = "";
+    private System.Threading.Timer? debounceTimer;
+
+    private int paginaActual = 1;
+    private const int ItemsPorPagina = 10;
+
+    private bool modalNuevoVisible = false;
+
+    private EmpleadoItem? empleadoAEliminar;
+    private bool eliminando = false;
+
+    private bool toastVisible = false;
+    private string toastTitulo = "";
+    private string toastMensaje = "";
+    private bool toastEsError = false;
+
+    private static readonly System.Globalization.CultureInfo CulturaArgentina = CrearCultura();
+
+    private static System.Globalization.CultureInfo CrearCultura()
+    {
+        var cultura = (System.Globalization.CultureInfo)System.Globalization.CultureInfo.GetCultureInfo("es-AR").Clone();
+        cultura.NumberFormat.NumberGroupSeparator = ".";
+        return cultura;
+    }
+
+    private static string FormatoMonto(int monto) => "$ " + monto.ToString("N0", CulturaArgentina);
+
+    private static string FormatearFecha(DateTime fecha) =>
+        fecha == default ? "-" : fecha.ToString("dd/MM/yyyy");
+
+    private int TotalRegistrados => listaEmpleados.Count;
+    private int TotalFiltrados => EmpleadosFiltrados.Count;
+    private bool HayBusquedaActiva => !string.IsNullOrWhiteSpace(terminoBusquedaDebounced);
+
+    private List<EmpleadoItem> EmpleadosFiltrados
+    {
+        get
+        {
+            if (!HayBusquedaActiva)
+            {
+                return listaEmpleados;
+            }
+
+            var queryNormalizado = FormatoMonedaHelper.RemoverTildes(terminoBusquedaDebounced.Trim());
+
+            return listaEmpleados.Where(e =>
+            {
+                var nombreNormalizado = FormatoMonedaHelper.RemoverTildes(e.NombreCompleto);
+                var telefonoNormalizado = FormatoMonedaHelper.RemoverTildes(e.Telefono);
+                var idTexto = e.Id.ToString();
+                var salarioTexto = e.Salario.ToString();
+
+                return nombreNormalizado.Contains(queryNormalizado, StringComparison.OrdinalIgnoreCase)
+                    || telefonoNormalizado.Contains(queryNormalizado, StringComparison.OrdinalIgnoreCase)
+                    || idTexto.Contains(queryNormalizado, StringComparison.OrdinalIgnoreCase)
+                    || salarioTexto.Contains(queryNormalizado, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+        }
+    }
+
+    private int TotalPaginas
+    {
+        get
+        {
+            var total = (int)Math.Ceiling((double)EmpleadosFiltrados.Count / ItemsPorPagina);
+            return total < 1 ? 1 : total;
+        }
+    }
+
+    private List<EmpleadoItem> EmpleadosPaginados
+    {
+        get
+        {
+            return EmpleadosFiltrados
+                .Skip((paginaActual - 1) * ItemsPorPagina)
+                .Take(ItemsPorPagina)
+                .ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarEmpleados(mostrarSpinner: true);
+    }
+
+    private async Task CargarEmpleados(bool mostrarSpinner = false)
+    {
+        if (mostrarSpinner)
+        {
+            cargando = true;
+            errorCarga = null;
+        }
+
+        try
+        {
+            var resp = await Http.GetAsync<List<EmpleadoItem>>("api/empleados/lista");
+
+            if (resp.Error)
+            {
+                errorCarga = await HttpErrorHelper.ObtenerMensajeError(resp);
+            }
+            else
+            {
+                errorCarga = null;
+                listaEmpleados = resp.Dato ?? new List<EmpleadoItem>();
+
+                if (paginaActual > TotalPaginas)
+                {
+                    paginaActual = 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorCarga = $"Error de comunicación: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnBusquedaInput(ChangeEventArgs e)
+    {
+        terminoBusqueda = e.Value?.ToString() ?? "";
+
+        debounceTimer?.Dispose();
+        debounceTimer = new System.Threading.Timer(async _ =>
+        {
+            terminoBusquedaDebounced = terminoBusqueda;
+            paginaActual = 1;
+            await InvokeAsync(StateHasChanged);
+        }, null, 250, System.Threading.Timeout.Infinite);
+    }
+
+    private void LimpiarBusqueda()
+    {
+        terminoBusqueda = "";
+        terminoBusquedaDebounced = "";
+        paginaActual = 1;
+    }
+
+    private void AbrirModalNuevo()
+    {
+        modalNuevoVisible = true;
+    }
+
+    private void CerrarModalNuevo()
+    {
+        modalNuevoVisible = false;
+    }
+
+    private async Task OnEmpleadoCreado(string nombreCompleto)
+    {
+        MostrarToast("Empleado registrado con éxito", $"Se dio de alta a {nombreCompleto}.", esError: false);
+        await CargarEmpleados(mostrarSpinner: false);
+    }
+
+    private void SolicitarEliminacion(EmpleadoItem empleado)
+    {
+        empleadoAEliminar = empleado;
+    }
+
+    private void CancelarEliminacion()
+    {
+        if (eliminando) return;
+        empleadoAEliminar = null;
+    }
+
+    private async Task ConfirmarEliminacion()
+    {
+        if (empleadoAEliminar == null || eliminando) return;
+
+        var empleado = empleadoAEliminar;
+        eliminando = true;
+        StateHasChanged();
+
+        try
+        {
+            var resp = await Http.DeleteAsync<bool>($"api/empleados/eliminar/{empleado.Id}");
+
+            if (resp.Error)
+            {
+                var mensaje = await HttpErrorHelper.ObtenerMensajeError(resp);
+                MostrarToast("No se pudo eliminar", mensaje, esError: true);
+            }
+            else
+            {
+                await CargarEmpleados(mostrarSpinner: false);
+                MostrarToast("Empleado eliminado con éxito", $"{empleado.NombreCompleto} fue eliminado.", esError: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("No se pudo eliminar", $"Ocurrió un error inesperado: {ex.Message}", esError: true);
+        }
+        finally
+        {
+            eliminando = false;
+            empleadoAEliminar = null;
+            StateHasChanged();
+        }
+    }
+
+    private void MostrarToast(string titulo, string mensaje, bool esError)
+    {
+        toastTitulo = titulo;
+        toastMensaje = mensaje;
+        toastEsError = esError;
+        toastVisible = true;
+    }
+
+    private void CambiarPagina(int nuevaPagina)
+    {
+        if (nuevaPagina < 1 || nuevaPagina > TotalPaginas) return;
+        paginaActual = nuevaPagina;
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
+    }
+}

@@ -68,28 +68,16 @@ else // Si el entorno no es de desarrollo, habilitar el manejo de excepciones y 
   
 }
 
-#region Middlewares
-app.MapControllers();// Mapear los controladores a las rutas correspondientes
-#endregion
-
-
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
-//todo estos use es para habilitar el uso de archivos estáticos y archivos de Blazor en la aplicación
 
+app.UseAntiforgery(); // Habilitar la protección contra ataques CSRF (Cross-Site Request Forgery) en los formularios de Blazor
 
-app.UseRouting();// Habilitar el enrutamiento de la aplicación
+app.MapStaticAssets(); // Debe ir ANTES de MapRazorComponents: sirve los archivos estáticos y los de _framework
 
-app.UseAntiforgery();  // Habilitar la protección contra ataques CSRF (Cross-Site Request Forgery) en los formularios de Blazor
-
+app.MapControllers(); // Mapear los controladores a las rutas correspondientes
 app.MapRazorPages();
-app.MapControllers();
-app.MapFallbackToFile("index.html");
-//todo esto es el mapeo de los componentes de Razor y Blazor, para que se puedan renderizar en el navegador
 
-app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
