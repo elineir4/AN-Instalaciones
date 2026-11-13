@@ -1,0 +1,286 @@
+/* ==========================================================================
+   Estilos Stitch: Empleados - AN Instalaciones Sanitarias y Gas
+   ========================================================================== */
+
+.empleados-container {
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f9ff;
+    color: #0b1c30;
+    min-height: 100vh;
+}
+
+::deep .badge-soft-primary {
+    background-color: #e5eeff;
+    color: #0051d5;
+    font-weight: 600;
+}
+
+::deep .badge-soft-success {
+    background-color: #d1f4e0;
+    color: #006039;
+    font-weight: 600;
+}
+
+::deep .badge-soft-info {
+    background-color: #dce9ff;
+    color: #004bb5;
+    font-weight: 600;
+}
+
+::deep .badge-soft-role {
+    background-color: #eaf1ff;
+    color: #00162d;
+    font-weight: 500;
+}
+
+::deep .search-input-group .form-control {
+    background-color: #eff4ff;
+    border: none;
+    font-size: 0.875rem;
+}
+
+::deep .search-input-group .form-control:focus {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 81, 213, 0.15);
+}
+
+::deep .search-input-group .input-group-text {
+    background-color: #eff4ff;
+    border: none;
+    color: #74777e;
+}
+
+::deep .btn-limpiar-busqueda {
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+::deep .btn-limpiar-busqueda:hover {
+    color: #00162d !important;
+}
+
+::deep .table thead th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #43474d;
+    background-color: #eff4ff;
+    border-bottom: none;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+::deep .table tbody td {
+    border-bottom-color: #f1f4fa;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+::deep .btn-delete {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    color: #ba1a1a;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+::deep .btn-delete:hover:not(:disabled) {
+    background-color: #ffdad6;
+    color: #93000a;
+}
+
+::deep .btn-delete:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Modales: Nuevo Empleado y confirmación de eliminación
+   ========================================================================== */
+::deep .modal-backdrop-custom {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 37, 55, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 1050;
+    animation: backdropFadeInEmpleados 0.15s ease-out;
+}
+
+@keyframes backdropFadeInEmpleados {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+::deep .modal-dialog-custom {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    pointer-events: none;
+    z-index: 1055;
+    animation: modalSlideDownEmpleados 0.2s ease-out;
+}
+
+@keyframes modalSlideDownEmpleados {
+    from {
+        opacity: 0;
+        transform: translateY(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+::deep .modal-content-custom {
+    pointer-events: auto;
+    background-color: #FFFFFF;
+    border-radius: 14px;
+    border: 1px solid #E8ECF2;
+    box-shadow: 0 12px 32px rgba(15, 37, 55, 0.18);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+::deep .modal-dialog-confirm .modal-content-custom {
+    max-width: 440px;
+}
+
+::deep .modal-header-custom {
+    padding: 1.25rem 1.5rem;
+    background-color: #F8FAFC;
+    border-bottom: 1px solid #EDF2F7;
+}
+
+::deep .btn-close-modal {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    color: #64748B;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+::deep .btn-close-modal:hover:not(:disabled) {
+    background-color: #EDF2F7;
+    color: #00162d;
+}
+
+::deep .modal-body-custom {
+    padding: 1.5rem;
+}
+
+::deep .modal-footer-custom {
+    background-color: #F8FAFC;
+    border-top: 1px solid #EDF2F7;
+}
+
+::deep .modal-footer-custom .btn {
+    border-radius: 8px;
+}
+
+::deep .alert-error-custom {
+    background-color: #FEE2E2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+    font-size: 0.875rem;
+}
+
+::deep .btn-guardar-cliente {
+    background-color: #00162d !important;
+    color: #FFFFFF !important;
+    border: 1px solid #00162d !important;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: background-color 0.15s ease;
+}
+
+::deep .btn-guardar-cliente:hover:not(:disabled) {
+    background-color: #0f2b48 !important;
+    border-color: #0f2b48 !important;
+}
+
+::deep .btn-guardar-cliente:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+::deep .btn-eliminar-confirm {
+    background-color: #DC2626 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #DC2626 !important;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: background-color 0.15s ease;
+}
+
+::deep .btn-eliminar-confirm:hover:not(:disabled) {
+    background-color: #B91C1C !important;
+    border-color: #B91C1C !important;
+}
+
+::deep .btn-eliminar-confirm:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Toast de notificación */
+::deep .toast-custom-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1080;
+    max-width: 400px;
+    animation: toastSlideInEmpleados 0.25s ease-out;
+}
+
+@keyframes toastSlideInEmpleados {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+::deep .toast-custom {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    border-left: 4px solid #10B981;
+}
+
+::deep .toast-custom-container.toast-error .toast-custom {
+    border-left-color: #DC2626;
+}
+
+::deep .toast-icon-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}

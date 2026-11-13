@@ -19,9 +19,6 @@
 <body>
     <Routes @rendermode="InteractiveAuto" />
     <ReconnectModal />
-    @* El script de arranque NO debe pasar por @Assets: el fingerprint que genera
-       (p. ej. _framework/blazor.web.xmryko9e6j.js) no tiene endpoint y responde 404,
-       con lo que Blazor nunca arranca y todos los @onclick/@oninput quedan inertes. *@
     <script src="_framework/blazor.web.js"></script>
 </body>
 

@@ -1,0 +1,337 @@
+@using System.Text.RegularExpressions
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+
+@if (Visible)
+{
+    <div class="modal-backdrop-custom" @onclick="Cerrar"></div>
+
+    <div class="modal-dialog-custom" role="dialog" aria-modal="true" aria-labelledby="tituloNuevoEmpleado">
+        <div class="modal-content-custom shadow-lg">
+            <!-- Header del Modal -->
+            <div class="modal-header-custom d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-0" id="tituloNuevoEmpleado">Nuevo Empleado</h5>
+                    <span class="modal-subtitle text-muted small">Los campos con * son obligatorios.</span>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="Cerrar" aria-label="Cerrar" disabled="@isEnviando">✕</button>
+            </div>
+
+            <!-- Body del Modal -->
+            <div class="modal-body-custom">
+                @if (!string.IsNullOrWhiteSpace(errorServidor))
+                {
+                    <div class="alert-error-custom d-flex align-items-start gap-2 mb-3 p-3 rounded-3" role="alert">
+                        <span class="material-symbols-outlined fs-5 flex-shrink-0">error</span>
+                        <span>@errorServidor</span>
+                    </div>
+                }
+
+                <div class="row g-3">
+                    <!-- Nombre (obligatorio) -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoEmpleadoNombre" class="form-label fw-semibold text-dark small mb-1">
+                            Nombre <span class="text-danger">*</span>
+                        </label>
+                        <input id="nuevoEmpleadoNombre"
+                               type="text"
+                               class="form-control @(errorNombre != null ? "is-invalid" : "")"
+                               autocomplete="off"
+                               value="@nombre"
+                               @oninput="OnNombreInput"
+                               disabled="@isEnviando" />
+                        @if (errorNombre != null)
+                        {
+                            <div class="text-danger small mt-1">@errorNombre</div>
+                        }
+                    </div>
+
+                    <!-- Apellido (obligatorio) -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoEmpleadoApellido" class="form-label fw-semibold text-dark small mb-1">
+                            Apellido <span class="text-danger">*</span>
+                        </label>
+                        <input id="nuevoEmpleadoApellido"
+                               type="text"
+                               class="form-control @(errorApellido != null ? "is-invalid" : "")"
+                               autocomplete="off"
+                               value="@apellido"
+                               @oninput="OnApellidoInput"
+                               disabled="@isEnviando" />
+                        @if (errorApellido != null)
+                        {
+                            <div class="text-danger small mt-1">@errorApellido</div>
+                        }
+                    </div>
+
+                    <!-- Teléfono -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoEmpleadoTelefono" class="form-label fw-semibold text-dark small mb-1">
+                            Teléfono
+                        </label>
+                        <input id="nuevoEmpleadoTelefono"
+                               type="tel"
+                               class="form-control @(errorTelefono != null ? "is-invalid" : "")"
+                               placeholder="+54 9 11 ..."
+                               autocomplete="off"
+                               value="@telefono"
+                               @oninput="OnTelefonoInput"
+                               disabled="@isEnviando" />
+                        @if (errorTelefono != null)
+                        {
+                            <div class="text-danger small mt-1">@errorTelefono</div>
+                        }
+                    </div>
+
+                    <!-- Fecha de ingreso -->
+                    <div class="col-12 col-sm-6">
+                        <label for="nuevoEmpleadoFechaIngreso" class="form-label fw-semibold text-dark small mb-1">
+                            Fecha de ingreso
+                        </label>
+                        <input id="nuevoEmpleadoFechaIngreso"
+                               type="date"
+                               class="form-control @(errorFecha != null ? "is-invalid" : "")"
+                               value="@fechaIngresoString"
+                               @onchange="OnFechaChanged"
+                               disabled="@isEnviando" />
+                        @if (errorFecha != null)
+                        {
+                            <div class="text-danger small mt-1">@errorFecha</div>
+                        }
+                    </div>
+
+                    <!-- Salario -->
+                    <div class="col-12">
+                        <label for="nuevoEmpleadoSalario" class="form-label fw-semibold text-dark small mb-1">
+                            Salario / Sueldo acordado
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light fw-bold text-secondary">$</span>
+                            <input id="nuevoEmpleadoSalario"
+                                   type="number"
+                                   step="1"
+                                   min="0"
+                                   class="form-control @(errorSalario != null ? "is-invalid" : "")"
+                                   placeholder="0"
+                                   autocomplete="off"
+                                   value="@salarioInputString"
+                                   @oninput="OnSalarioInput"
+                                   disabled="@isEnviando" />
+                        </div>
+                        @if (errorSalario != null)
+                        {
+                            <div class="text-danger small mt-1">@errorSalario</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer con Botones -->
+            <div class="modal-footer-custom d-flex justify-content-end gap-2 p-3">
+                <button type="button" class="btn btn-light px-4" @onclick="Cerrar" disabled="@isEnviando">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="btn btn-guardar-cliente px-4 d-inline-flex align-items-center gap-2"
+                        @onclick="Guardar"
+                        disabled="@isEnviando">
+                    @if (isEnviando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span>Guardar</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnCerrar { get; set; }
+    [Parameter] public EventCallback<string> OnEmpleadoCreado { get; set; }
+
+    private static readonly Regex RegexTelefono = new(@"^[0-9 +\-]+$");
+
+    private string nombre = "";
+    private string apellido = "";
+    private string telefono = "";
+    private string salarioInputString = "";
+    private int salario = 0;
+    private DateTime fechaIngreso = DateTime.Today;
+    private string fechaIngresoString => fechaIngreso.ToString("yyyy-MM-dd");
+
+    private string? errorNombre;
+    private string? errorApellido;
+    private string? errorTelefono;
+    private string? errorSalario;
+    private string? errorFecha;
+    private string? errorServidor;
+
+    private bool isEnviando = false;
+    private bool visibleAnterior;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible && !visibleAnterior)
+        {
+            nombre = "";
+            apellido = "";
+            telefono = "";
+            salarioInputString = "";
+            salario = 0;
+            fechaIngreso = DateTime.Today;
+            errorNombre = null;
+            errorApellido = null;
+            errorTelefono = null;
+            errorSalario = null;
+            errorFecha = null;
+            errorServidor = null;
+            isEnviando = false;
+        }
+
+        visibleAnterior = Visible;
+    }
+
+    private void OnNombreInput(ChangeEventArgs e)
+    {
+        nombre = e.Value?.ToString() ?? "";
+        errorNombre = null;
+    }
+
+    private void OnApellidoInput(ChangeEventArgs e)
+    {
+        apellido = e.Value?.ToString() ?? "";
+        errorApellido = null;
+    }
+
+    private void OnTelefonoInput(ChangeEventArgs e)
+    {
+        telefono = e.Value?.ToString() ?? "";
+        errorTelefono = null;
+    }
+
+    private void OnFechaChanged(ChangeEventArgs e)
+    {
+        errorFecha = null;
+        var val = e.Value?.ToString();
+        if (DateTime.TryParse(val, out var parsed))
+        {
+            fechaIngreso = parsed;
+        }
+        else
+        {
+            errorFecha = "Ingresá una fecha válida.";
+        }
+    }
+
+    private void OnSalarioInput(ChangeEventArgs e)
+    {
+        salarioInputString = e.Value?.ToString() ?? "";
+        errorSalario = null;
+
+        if (string.IsNullOrWhiteSpace(salarioInputString))
+        {
+            salario = 0;
+        }
+        else if (int.TryParse(salarioInputString, out var parsed))
+        {
+            salario = parsed;
+        }
+        else if (decimal.TryParse(salarioInputString, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedDec))
+        {
+            salario = (int)Math.Round(parsedDec);
+        }
+        else
+        {
+            errorSalario = "Ingresá un monto numérico entero válido.";
+        }
+    }
+
+    private bool Validar()
+    {
+        errorNombre = string.IsNullOrWhiteSpace(nombre) ? "El nombre es obligatorio." : null;
+        errorApellido = string.IsNullOrWhiteSpace(apellido) ? "El apellido es obligatorio." : null;
+
+        var telefonoLimpio = telefono.Trim();
+        errorTelefono = !string.IsNullOrWhiteSpace(telefonoLimpio) && !RegexTelefono.IsMatch(telefonoLimpio)
+            ? "El teléfono solo puede contener números, espacios, guiones o '+'."
+            : null;
+
+        if (string.IsNullOrWhiteSpace(salarioInputString))
+        {
+            salario = 0;
+            errorSalario = null;
+        }
+        else if (salario < 0)
+        {
+            errorSalario = "El salario no puede ser negativo.";
+        }
+
+        return errorNombre == null && errorApellido == null && errorTelefono == null && errorSalario == null && errorFecha == null;
+    }
+
+    private async Task Guardar()
+    {
+        if (isEnviando) return;
+
+        errorServidor = null;
+
+        if (!Validar())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isEnviando = true;
+        StateHasChanged();
+
+        try
+        {
+            var payload = new EmpleadoAlta
+            {
+                Nombre = nombre.Trim(),
+                Apellido = apellido.Trim(),
+                Telefono = string.IsNullOrWhiteSpace(telefono) ? null : telefono.Trim(),
+                Salario = salario,
+                FechaIngreso = fechaIngreso
+            };
+
+            var resp = await Http.PostAsync<EmpleadoAlta, object>("api/empleados/agregar", payload);
+
+            if (resp.Error)
+            {
+                errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+            }
+            else
+            {
+                isEnviando = false;
+                var nombreCompleto = $"{payload.Nombre} {payload.Apellido}".Trim();
+                await OnEmpleadoCreado.InvokeAsync(nombreCompleto);
+                await Cerrar();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorServidor = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isEnviando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isEnviando) return;
+        Visible = false;
+        await OnCerrar.InvokeAsync();
+    }
+}
