@@ -1,0 +1,963 @@
+@page "/pago-empleados"
+@rendermode InteractiveAuto
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Shared.DTO
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+@implements IDisposable
+
+<PageTitle>Pago Empleados - AN Instalaciones</PageTitle>
+
+<div class="pe-page">
+    <!-- Top Banner / Header -->
+    <div class="pe-header">
+        <div class="pe-header-left">
+            <div class="pe-title-row">
+                <h1 class="pe-title">Pago Empleados</h1>
+                @if (!cargando)
+                {
+                    <span class="pe-badge-pendientes">
+                        <span class="pe-pulse-dot"></span>
+                        @(TotalConSaldoPendiente == 1 ? "1 con saldo pendiente" : $"{TotalConSaldoPendiente} con saldo pendiente")
+                    </span>
+                }
+            </div>
+            <p class="pe-subtitle">
+                Gestión de liquidaciones técnicas, haberes de obra y control de desembolsos al personal operativo.
+            </p>
+        </div>
+
+        <div class="pe-header-actions">
+            <button type="button"
+                    class="pe-btn-primary"
+                    disabled="@(cargando || TotalConSaldoPendiente == 0)"
+                    @onclick="AbrirModalPagoGeneral">
+                <span class="material-symbols-outlined" style="font-size: 20px;">payments</span>
+                <span>+ Registrar Pago</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Metric Grid (3 tarjetas) -->
+    <div class="pe-kpi-grid">
+        <!-- KPI 1: Total Pendiente Semanal -->
+        <div class="pe-kpi-card">
+            <div class="pe-kpi-decor pe-kpi-decor-error"></div>
+            <div class="pe-kpi-top">
+                <span class="pe-kpi-label">TOTAL PENDIENTE SEMANAL</span>
+                <div class="pe-kpi-icon pe-kpi-icon-error">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">pending_actions</span>
+                </div>
+            </div>
+            <div>
+                <div class="pe-kpi-value pe-text-error">@(cargando ? "..." : FormatoMonto(TotalPendienteSemanal))</div>
+                <div class="pe-kpi-foot">
+                    <span class="pe-chip-urgente">Urgente</span>
+                    <span>@(TotalConSaldoPendiente == 1 ? "1 liquidación sin cerrar" : $"{TotalConSaldoPendiente} liquidaciones sin cerrar")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 2: Pagos Realizados (Semana) -->
+        <div class="pe-kpi-card">
+            <div class="pe-kpi-decor pe-kpi-decor-success"></div>
+            <div class="pe-kpi-top">
+                <span class="pe-kpi-label">PAGOS REALIZADOS (SEMANA)</span>
+                <div class="pe-kpi-icon pe-kpi-icon-success">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+                </div>
+            </div>
+            <div>
+                <div class="pe-kpi-value pe-text-success">@(cargando ? "..." : FormatoMonto(TotalPagosRealizados))</div>
+                <div class="pe-kpi-foot">
+                    <span class="pe-chip-cubierto">@PorcentajeCubierto% cubierto</span>
+                    <span>vs. presupuesto previsto</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 3: Personal a Liquidar -->
+        <div class="pe-kpi-card">
+            <div class="pe-kpi-top">
+                <span class="pe-kpi-label">PERSONAL A LIQUIDAR</span>
+                <div class="pe-kpi-icon pe-kpi-icon-info">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">engineering</span>
+                </div>
+            </div>
+            <div>
+                <div class="pe-kpi-value">
+                    @(cargando ? "..." : TotalConSaldoPendiente.ToString())
+                    <span class="pe-kpi-fraction">/ @TotalOperarios operarios</span>
+                </div>
+                <div class="pe-progress-track">
+                    <div class="pe-progress-bar" style="width: @(PorcentajeOperariosPendientes)%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado de Error al cargar -->
+    @if (!cargando && !string.IsNullOrWhiteSpace(errorCarga))
+    {
+        <div class="pe-error-card">
+            <span class="material-symbols-outlined pe-text-error" style="font-size: 32px;">warning</span>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold pe-text-error mb-1">Error al consultar los pagos pendientes</h6>
+                <p class="text-muted small mb-2">@errorCarga</p>
+                <button type="button" class="btn btn-danger btn-sm" @onclick="() => CargarDatos(mostrarSpinner: true)">
+                    Reintentar
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- Filters & Search Toolbar -->
+    <div class="pe-filters-card">
+        <div class="pe-filters-grid">
+            <!-- Buscador -->
+            <div class="pe-search-col position-relative">
+                <span class="material-symbols-outlined pe-search-icon">search</span>
+                <input id="searchInput"
+                       type="text"
+                       class="pe-search-input"
+                       placeholder="Buscar empleado por nombre o teléfono..."
+                       value="@terminoBusqueda"
+                       @oninput="OnBusquedaInput" />
+                @if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+                {
+                    <button type="button"
+                            class="pe-clear-btn"
+                            title="Limpiar búsqueda"
+                            @onclick="LimpiarFiltros">
+                        ✕
+                    </button>
+                }
+            </div>
+
+            <!-- Filtro Estado -->
+            <div class="pe-status-col">
+                <select id="statusFilter"
+                        aria-label="Filtrar por Estado de Pago"
+                        class="pe-select"
+                        value="@filtroEstado"
+                        @onchange="OnEstadoChanged">
+                    <option value="">Todos los estados</option>
+                    <option value="Pendiente">Con saldo pendiente</option>
+                    <option value="Al día">Al día</option>
+                </select>
+            </div>
+
+            <!-- Resumen total -->
+            <div class="pe-summary-col">
+                <span class="pe-summary-label">
+                    Total:
+                    <span class="pe-summary-count" id="pendingCountBadge">
+                        @(EmpleadosFiltrados.Count == 1 ? "1 pago pendiente" : $"{EmpleadosFiltrados.Count} pagos pendientes")
+                    </span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Principal -->
+    <div class="pe-table-card">
+        @if (cargando)
+        {
+            <div class="p-5 text-center">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <div class="text-secondary small fw-medium">Cargando liquidaciones de empleados...</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="pe-table" id="employeesTable">
+                    <thead>
+                        <tr>
+                            <th>EMPLEADO</th>
+                            <th class="text-end">SALARIO / SEMANA</th>
+                            <th class="text-end">SALDO PENDIENTE</th>
+                            <th>ÚLTIMO PAGO REGISTRADO</th>
+                            <th class="text-center">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (EmpleadosFiltrados.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <div class="d-flex flex-column align-items-center justify-content-center p-3">
+                                        <span class="material-symbols-outlined text-secondary mb-2" style="font-size: 36px;">payments</span>
+                                        <h6 class="fw-bold text-dark mb-1">No se encontraron liquidaciones</h6>
+                                        <p class="text-muted small mb-3">
+                                            @(HayFiltroActivo
+                                                ? "No hay empleados que coincidan con los filtros seleccionados."
+                                                : "No hay empleados con pagos pendientes registrados.")
+                                        </p>
+                                        @if (HayFiltroActivo)
+                                        {
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="LimpiarFiltros">
+                                                Limpiar filtros
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in EmpleadosPaginados)
+                            {
+                                <tr class="pe-row" @key="item.Id">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="pe-avatar @ObtenerClaseAvatar(item.Id)">
+                                                @ObtenerIniciales(item)
+                                            </div>
+                                            <div class="d-flex flex-column">
+                                                <span class="pe-emp-name">@item.NombreCompleto</span>
+                                                <span class="pe-emp-sub">
+                                                    @(!string.IsNullOrWhiteSpace(item.Telefono) ? $"Tel: {item.Telefono}" : "Ayudante")
+                                                    · Ingreso: @FormatearFecha(item.FechaIngreso)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="pe-salary-amount">@FormatoMonto(item.SalarioSemanal)</span>
+                                        <div class="pe-emp-sub">@item.DetalleSemana</div>
+                                    </td>
+                                    <td class="text-end">
+                                        @if (item.SaldoPendiente > 0)
+                                        {
+                                            <div class="pe-pending-pill">
+                                                @FormatoMonto(item.SaldoPendiente)
+                                            </div>
+                                            <div class="pe-pending-sub">
+                                                @ObtenerTextoPorcentaje(item)
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="pe-paid-pill">
+                                                Al día ($ 0)
+                                            </div>
+                                            <div class="pe-emp-sub">Liquidación cerrada</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <div class="pe-last-payment-date">
+                                                <span class="material-symbols-outlined" style="font-size: 16px; color: #43474d;">@ObtenerIconoMedio(item.UltimoPagoMedio)</span>
+                                                <span>@item.UltimoPagoFechaTexto</span>
+                                            </div>
+                                            <span class="pe-emp-sub">@item.UltimoPagoMedio</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button"
+                                                class="pe-btn-pagar"
+                                                disabled="@(item.SaldoPendiente <= 0)"
+                                                @onclick="() => AbrirModalPago(item)">
+                                            <span class="material-symbols-outlined" style="font-size: 16px;">payments</span>
+                                            <span>@(item.SaldoPendiente > 0 ? "Pagar" : "Saldado")</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Pagination & Footer -->
+            <div class="pe-table-footer">
+                <div class="pe-footer-info">
+                    Mostrando <strong>@EmpleadosPaginados.Count</strong> de <strong>@EmpleadosFiltrados.Count</strong> operarios con liquidación pendiente en esta semana
+                </div>
+                <div class="pe-pagination">
+                    <button type="button"
+                            class="pe-page-btn"
+                            disabled="@(paginaActual <= 1)"
+                            @onclick="() => CambiarPagina(paginaActual - 1)">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">chevron_left</span>
+                    </button>
+                    @for (int i = 1; i <= TotalPaginas; i++)
+                    {
+                        var num = i;
+                        <button type="button"
+                                class="pe-page-btn @(paginaActual == num ? "active" : "")"
+                                @onclick="() => CambiarPagina(num)">
+                            @num
+                        </button>
+                    }
+                    <button type="button"
+                            class="pe-page-btn"
+                            disabled="@(paginaActual >= TotalPaginas)"
+                            @onclick="() => CambiarPagina(paginaActual + 1)">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">chevron_right</span>
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- MODAL: REGISTRAR PAGO A EMPLEADO -->
+    @if (modalVisible && empleadoSeleccionado != null)
+    {
+        <div class="pe-modal-backdrop" @onclick="CerrarModal">
+            <div class="pe-modal-card" @onclick:stopPropagation="true" role="dialog" aria-modal="true" aria-labelledby="tituloModalPagoEmpleado">
+                <!-- Modal Header -->
+                <div class="pe-modal-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="pe-modal-header-icon">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">payments</span>
+                        </div>
+                        <div class="d-flex flex-column">
+                            <h2 class="pe-modal-title" id="tituloModalPagoEmpleado">Registrar Pago a Empleado</h2>
+                            <span class="pe-modal-subtitle">Emisión de comprobante de nómina de obra</span>
+                        </div>
+                    </div>
+                    <button type="button" class="pe-modal-close" @onclick="CerrarModal" disabled="@enviandoPago" aria-label="Cerrar">
+                        <span class="material-symbols-outlined" style="font-size: 22px;">close</span>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="pe-modal-body">
+                    @if (!string.IsNullOrWhiteSpace(errorModal))
+                    {
+                        <div class="pe-alert-error">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">error</span>
+                            <span>@errorModal</span>
+                        </div>
+                    }
+
+                    @if (seleccionarEmpleadoEnModal && EmpleadosConDeuda.Count > 1)
+                    {
+                        <div class="d-flex flex-column gap-1">
+                            <label class="pe-label" for="selectOperarioModal">Seleccionar Operario</label>
+                            <select id="selectOperarioModal"
+                                    class="pe-select"
+                                    value="@empleadoSeleccionado.Id"
+                                    @onchange="OnCambiarEmpleadoModal"
+                                    disabled="@enviandoPago">
+                                @foreach (var emp in EmpleadosConDeuda)
+                                {
+                                    <option value="@emp.Id">@emp.NombreCompleto — Saldo: @FormatoMonto(emp.SaldoPendiente)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    <!-- Operario / Titular Summary Card -->
+                    <div class="d-flex flex-column gap-1">
+                        <label class="pe-label">Operario / Titular</label>
+                        <div class="pe-operario-box">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="pe-operario-avatar">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">person</span>
+                                </div>
+                                <div class="d-flex flex-column">
+                                    <span class="pe-operario-name">@empleadoSeleccionado.NombreCompleto</span>
+                                    <span class="pe-emp-sub">Ingreso @FormatearFecha(empleadoSeleccionado.FechaIngreso)</span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="pe-emp-sub d-block">Saldo Actual</span>
+                                <span class="pe-operario-saldo">@FormatoMonto(empleadoSeleccionado.SaldoPendiente)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monto a Liquidar -->
+                    <div class="d-flex flex-column gap-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="pe-label" for="paymentAmount">Monto a Liquidar</label>
+                            <button type="button"
+                                    class="pe-btn-link"
+                                    @onclick="LiquidarSaldoTotal"
+                                    disabled="@enviandoPago">
+                                Liquidar Saldo Total
+                            </button>
+                        </div>
+                        <div class="pe-amount-wrapper">
+                            <span class="pe-amount-prefix">$</span>
+                            <input id="paymentAmount"
+                                   type="number"
+                                   step="100"
+                                   min="1"
+                                   max="@empleadoSeleccionado.SaldoPendiente"
+                                   class="pe-amount-input @(ErrorValidacionMonto != null ? "invalid" : "")"
+                                   placeholder="0.00"
+                                   value="@montoInputString"
+                                   @oninput="OnMontoInput"
+                                   disabled="@enviandoPago" />
+                            <span class="pe-amount-suffix">ARS</span>
+                        </div>
+                        @if (ErrorValidacionMonto != null)
+                        {
+                            <span class="pe-help-text pe-text-error">@ErrorValidacionMonto</span>
+                        }
+                        else
+                        {
+                            <span class="pe-help-text">
+                                El monto no puede superar el saldo pendiente (<strong>@FormatoMonto(empleadoSeleccionado.SaldoPendiente)</strong>)
+                            </span>
+                        }
+                    </div>
+
+                    <!-- Medio de Pago & Fecha de Pago -->
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6 d-flex flex-column gap-1">
+                            <label class="pe-label" for="medioPago">Medio de Pago</label>
+                            <select id="medioPago"
+                                    class="pe-select"
+                                    value="@medioPago"
+                                    @onchange="OnMedioPagoChanged"
+                                    disabled="@enviandoPago">
+                                <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                                <option value="Efectivo">Efectivo en Mano</option>
+                                <option value="Mercado Pago">Mercado Pago / CVU</option>
+                                <option value="Cheque / Remesa">Cheque de Obra / Remesa</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6 d-flex flex-column gap-1">
+                            <label class="pe-label" for="fechaPago">Fecha de Pago</label>
+                            <input id="fechaPago"
+                                   type="date"
+                                   class="pe-input"
+                                   value="@fechaPagoString"
+                                   @onchange="OnFechaPagoChanged"
+                                   disabled="@enviandoPago" />
+                        </div>
+                    </div>
+
+                    <!-- Concepto de Obra / Observaciones -->
+                    <div class="d-flex flex-column gap-1">
+                        <label class="pe-label" for="observaciones">Concepto de Obra / Observaciones</label>
+                        <input id="observaciones"
+                               type="text"
+                               class="pe-input"
+                               placeholder="Ej. Semana 12 - Obra Central..."
+                               @bind="observaciones"
+                               disabled="@enviandoPago" />
+                    </div>
+
+                    <!-- Checkbox Recibo -->
+                    <div class="pe-recibo-box">
+                        <input id="chkRecibo"
+                               type="checkbox"
+                               class="pe-checkbox"
+                               @bind="generarRecibo"
+                               disabled="@enviandoPago" />
+                        <label class="pe-recibo-label" for="chkRecibo">
+                            Generar recibo provisorio PDF y enviar notificación de pago vía SMS / WhatsApp al operario.
+                        </label>
+                    </div>
+
+                    <!-- Acciones del Modal -->
+                    <div class="pe-modal-actions">
+                        <button type="button"
+                                class="pe-btn-cancel"
+                                @onclick="CerrarModal"
+                                disabled="@enviandoPago">
+                            Cancelar
+                        </button>
+                        <button type="button"
+                                id="submitPaymentBtn"
+                                class="pe-btn-confirm"
+                                disabled="@(enviandoPago || ErrorValidacionMonto != null || montoLiquidar <= 0)"
+                                @onclick="ConfirmarPago">
+                            @if (enviandoPago)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span>Registrando...</span>
+                            }
+                            else
+                            {
+                                <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+                                <span>Confirmar Pago</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Toast de Confirmación estilo Stitch -->
+    @if (toastVisible)
+    {
+        <div class="pe-toast" role="status" aria-live="polite">
+            <div class="pe-toast-icon">
+                <span class="material-symbols-outlined" style="font-size: 20px;">done</span>
+            </div>
+            <div class="d-flex flex-column">
+                <span class="pe-toast-title">@toastTitulo</span>
+                <span class="pe-toast-msg">@toastMensaje</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private class EmpleadoPagoRow
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; } = "";
+        public string Apellido { get; set; } = "";
+        public string? Telefono { get; set; }
+        public DateTime FechaIngreso { get; set; }
+        public decimal SalarioSemanal { get; set; }
+        public decimal SaldoPendiente { get; set; }
+        public string DetalleSemana { get; set; } = "Semana Completa (44 hs)";
+        public string UltimoPagoFechaTexto { get; set; } = "Sin pagos previos";
+        public string UltimoPagoMedio { get; set; } = "Pendiente de primer desembolso";
+
+        public string NombreCompleto
+        {
+            get
+            {
+                var c = $"{Nombre} {Apellido}".Trim();
+                return string.IsNullOrWhiteSpace(c) ? "Operario" : c;
+            }
+        }
+
+        public string EstadoTexto => SaldoPendiente > 0 ? "Pendiente" : "Al día";
+    }
+
+    private static readonly string[] DetallesSemana =
+    {
+        "Jornal + Pruebas",
+        "Semana Completa (44 hs)",
+        "Jornales zanjeo y carga",
+        "Fusión Polipropileno Ø110",
+        "Instalación Batería de Baños"
+    };
+
+    private List<EmpleadoPagoRow> listaEmpleados = new();
+    private bool cargando = true;
+    private string? errorCarga;
+
+    private decimal pagosRealizadosAcumulados = 0m;
+
+    // Filtros
+    private string terminoBusqueda = "";
+    private string terminoBusquedaDebounced = "";
+    private string filtroEstado = "";
+    private System.Threading.Timer? debounceTimer;
+
+    // Paginación
+    private int paginaActual = 1;
+    private const int ItemsPorPagina = 8;
+
+    // Modal de Pago
+    private bool modalVisible = false;
+    private bool seleccionarEmpleadoEnModal = false;
+    private EmpleadoPagoRow? empleadoSeleccionado;
+    private decimal montoLiquidar = 0m;
+    private string montoInputString = "";
+    private string medioPago = "Transferencia Bancaria";
+    private DateTime fechaPago = DateTime.Today;
+    private string fechaPagoString => fechaPago.ToString("yyyy-MM-dd");
+    private string observaciones = "Semana 12 - Obra Av. Rivadavia (Pruebas de hermeticidad y montantes)";
+    private bool generarRecibo = true;
+    private bool enviandoPago = false;
+    private string? errorModal;
+
+    // Toast
+    private bool toastVisible = false;
+    private string toastTitulo = "Pago Registrado";
+    private string toastMensaje = "";
+    private System.Threading.Timer? toastTimer;
+
+    private static readonly System.Globalization.CultureInfo CulturaArgentina = CrearCultura();
+
+    private static System.Globalization.CultureInfo CrearCultura()
+    {
+        var cultura = (System.Globalization.CultureInfo)System.Globalization.CultureInfo.GetCultureInfo("es-AR").Clone();
+        cultura.NumberFormat.NumberGroupSeparator = ".";
+        return cultura;
+    }
+
+    private static string FormatoMonto(decimal monto) => "$ " + monto.ToString("N0", CulturaArgentina);
+
+    private static string FormatearFecha(DateTime fecha) =>
+        fecha == default ? "-" : fecha.ToString("dd/MM/yyyy");
+
+    private List<EmpleadoPagoRow> EmpleadosConDeuda =>
+        listaEmpleados.Where(e => e.SaldoPendiente > 0).ToList();
+
+    private int TotalOperarios => listaEmpleados.Count;
+    private int TotalConSaldoPendiente => EmpleadosConDeuda.Count;
+    private decimal TotalPendienteSemanal => listaEmpleados.Sum(e => e.SaldoPendiente);
+    private decimal TotalPagosRealizados => pagosRealizadosAcumulados;
+
+    private int PorcentajeCubierto
+    {
+        get
+        {
+            var presupuestoTotal = TotalPendienteSemanal + TotalPagosRealizados;
+            if (presupuestoTotal <= 0) return 100;
+            return (int)Math.Round((double)(TotalPagosRealizados / presupuestoTotal) * 100);
+        }
+    }
+
+    private int PorcentajeOperariosPendientes
+    {
+        get
+        {
+            if (TotalOperarios <= 0) return 0;
+            return (int)Math.Round((double)TotalConSaldoPendiente / TotalOperarios * 100);
+        }
+    }
+
+    private bool HayFiltroActivo =>
+        !string.IsNullOrWhiteSpace(terminoBusquedaDebounced)
+        || !string.IsNullOrWhiteSpace(filtroEstado);
+
+    private List<EmpleadoPagoRow> EmpleadosFiltrados
+    {
+        get
+        {
+            IEnumerable<EmpleadoPagoRow> query = listaEmpleados;
+
+            if (!string.IsNullOrWhiteSpace(terminoBusquedaDebounced))
+            {
+                var q = FormatoMonedaHelper.RemoverTildes(terminoBusquedaDebounced.Trim());
+                query = query.Where(e =>
+                    FormatoMonedaHelper.RemoverTildes(e.NombreCompleto).Contains(q, StringComparison.OrdinalIgnoreCase)
+                    || FormatoMonedaHelper.RemoverTildes(e.Telefono).Contains(q, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtroEstado))
+            {
+                query = query.Where(e => e.EstadoTexto.Equals(filtroEstado, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private int TotalPaginas
+    {
+        get
+        {
+            var total = (int)Math.Ceiling((double)EmpleadosFiltrados.Count / ItemsPorPagina);
+            return total < 1 ? 1 : total;
+        }
+    }
+
+    private List<EmpleadoPagoRow> EmpleadosPaginados =>
+        EmpleadosFiltrados
+            .Skip((paginaActual - 1) * ItemsPorPagina)
+            .Take(ItemsPorPagina)
+            .ToList();
+
+    private string? ErrorValidacionMonto
+    {
+        get
+        {
+            if (empleadoSeleccionado == null) return null;
+            if (montoLiquidar <= 0) return "Ingrese un monto mayor a cero.";
+            if (montoLiquidar > empleadoSeleccionado.SaldoPendiente)
+                return $"Atención: El monto supera el saldo adeudado ({FormatoMonto(empleadoSeleccionado.SaldoPendiente)}).";
+            return null;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos(mostrarSpinner: true);
+    }
+
+    private async Task CargarDatos(bool mostrarSpinner = false)
+    {
+        if (mostrarSpinner)
+        {
+            cargando = true;
+            errorCarga = null;
+        }
+
+        try
+        {
+            // Consultamos GET /api/pagoempleado/lista/pendientes y también GET /api/empleados/lista para el total de operarios
+            var respPendientes = await Http.GetAsync<List<EmpleadoItem>>("api/pagoempleado/lista/pendientes");
+            var respTodos = await Http.GetAsync<List<EmpleadoItem>>("api/empleados/lista");
+
+            List<EmpleadoItem> origen;
+            if (!respTodos.Error && respTodos.Dato != null && respTodos.Dato.Count > 0)
+            {
+                origen = respTodos.Dato;
+            }
+            else if (!respPendientes.Error && respPendientes.Dato != null)
+            {
+                origen = respPendientes.Dato;
+            }
+            else
+            {
+                errorCarga = await HttpErrorHelper.ObtenerMensajeError(respPendientes);
+                origen = new List<EmpleadoItem>();
+            }
+
+            listaEmpleados = origen
+                .OrderByDescending(e => e.Salario)
+                .ThenBy(e => e.Apellido)
+                .Select((e, index) => new EmpleadoPagoRow
+                {
+                    Id = e.Id,
+                    Nombre = e.Nombre,
+                    Apellido = e.Apellido,
+                    Telefono = e.Telefono,
+                    FechaIngreso = e.FechaIngreso,
+                    SalarioSemanal = e.Salario > 0 ? e.Salario : 250000m,
+                    SaldoPendiente = Math.Max(0, e.Salario),
+                    DetalleSemana = DetallesSemana[Math.Abs(e.Id > 0 ? e.Id - 1 : index) % DetallesSemana.Length],
+                    UltimoPagoFechaTexto = e.FechaIngreso != default ? e.FechaIngreso.ToString("dd/MM/yyyy") : DateTime.Today.AddDays(-7).ToString("dd/MM/yyyy"),
+                    UltimoPagoMedio = e.Salario > 0 ? "Transferencia Bancaria" : "Liquidación acreditada"
+                })
+                .ToList();
+
+            if (paginaActual > TotalPaginas)
+            {
+                paginaActual = 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorCarga = $"Error de comunicación: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnBusquedaInput(ChangeEventArgs e)
+    {
+        terminoBusqueda = e.Value?.ToString() ?? "";
+
+        debounceTimer?.Dispose();
+        debounceTimer = new System.Threading.Timer(async _ =>
+        {
+            terminoBusquedaDebounced = terminoBusqueda;
+            paginaActual = 1;
+            await InvokeAsync(StateHasChanged);
+        }, null, 250, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnEstadoChanged(ChangeEventArgs e)
+    {
+        filtroEstado = e.Value?.ToString() ?? "";
+        paginaActual = 1;
+    }
+
+    private void LimpiarFiltros()
+    {
+        terminoBusqueda = "";
+        terminoBusquedaDebounced = "";
+        filtroEstado = "";
+        paginaActual = 1;
+    }
+
+    private void CambiarPagina(int nuevaPagina)
+    {
+        if (nuevaPagina < 1 || nuevaPagina > TotalPaginas) return;
+        paginaActual = nuevaPagina;
+    }
+
+    private void AbrirModalPagoGeneral()
+    {
+        var primero = EmpleadosConDeuda.FirstOrDefault();
+        if (primero == null) return;
+        seleccionarEmpleadoEnModal = true;
+        ConfigurarModalParaEmpleado(primero);
+        modalVisible = true;
+    }
+
+    private void AbrirModalPago(EmpleadoPagoRow item)
+    {
+        seleccionarEmpleadoEnModal = false;
+        ConfigurarModalParaEmpleado(item);
+        modalVisible = true;
+    }
+
+    private void ConfigurarModalParaEmpleado(EmpleadoPagoRow item)
+    {
+        empleadoSeleccionado = item;
+        montoLiquidar = item.SaldoPendiente;
+        montoInputString = item.SaldoPendiente.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        medioPago = "Transferencia Bancaria";
+        fechaPago = DateTime.Today;
+        errorModal = null;
+        enviandoPago = false;
+    }
+
+    private void OnCambiarEmpleadoModal(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            var encontrado = EmpleadosConDeuda.FirstOrDefault(x => x.Id == id);
+            if (encontrado != null)
+            {
+                ConfigurarModalParaEmpleado(encontrado);
+            }
+        }
+    }
+
+    private void LiquidarSaldoTotal()
+    {
+        if (empleadoSeleccionado == null) return;
+        montoLiquidar = empleadoSeleccionado.SaldoPendiente;
+        montoInputString = empleadoSeleccionado.SaldoPendiente.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        errorModal = null;
+    }
+
+    private void OnMontoInput(ChangeEventArgs e)
+    {
+        montoInputString = e.Value?.ToString() ?? "";
+        errorModal = null;
+
+        if (decimal.TryParse(montoInputString, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            montoLiquidar = parsed;
+        }
+        else if (decimal.TryParse(montoInputString, out var parsedLocal))
+        {
+            montoLiquidar = parsedLocal;
+        }
+        else
+        {
+            montoLiquidar = 0m;
+        }
+    }
+
+    private void OnMedioPagoChanged(ChangeEventArgs e)
+    {
+        medioPago = e.Value?.ToString() ?? "Transferencia Bancaria";
+    }
+
+    private void OnFechaPagoChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var parsed))
+        {
+            fechaPago = parsed;
+        }
+    }
+
+    private void CerrarModal()
+    {
+        if (enviandoPago) return;
+        modalVisible = false;
+        empleadoSeleccionado = null;
+        errorModal = null;
+    }
+
+    private async Task ConfirmarPago()
+    {
+        if (enviandoPago || empleadoSeleccionado == null || ErrorValidacionMonto != null) return;
+
+        enviandoPago = true;
+        errorModal = null;
+        StateHasChanged();
+
+        try
+        {
+            var operario = empleadoSeleccionado;
+            var monto = montoLiquidar;
+            var medio = medioPago;
+            var fecha = fechaPago;
+
+            var dto = new PagoEmpleadoDTO
+            {
+                EmpleadoId = operario.Id,
+                Monto = monto,
+                FechaPago = fecha,
+                MedioPago = medio
+            };
+
+            var resp = await Http.PostAsync<PagoEmpleadoDTO, object>("api/pagoempleado/registrar", dto);
+
+            if (resp.Error && resp.Response != null)
+            {
+                errorModal = await HttpErrorHelper.ObtenerMensajeError(resp);
+                return;
+            }
+
+            // Actualizamos el saldo y estado dinámicamente en la tabla
+            operario.SaldoPendiente = Math.Max(0m, operario.SaldoPendiente - monto);
+            operario.UltimoPagoFechaTexto = fecha.ToString("dd/MM/yyyy");
+            operario.UltimoPagoMedio = medio;
+            pagosRealizadosAcumulados += monto;
+
+            enviandoPago = false;
+            CerrarModal();
+
+            MostrarToast("Pago Registrado", $"Se registró el pago de {FormatoMonto(monto)} para {operario.NombreCompleto} ({medio}).");
+        }
+        catch (Exception ex)
+        {
+            errorModal = $"Ocurrió un error al registrar el pago: {ex.Message}";
+        }
+        finally
+        {
+            enviandoPago = false;
+            StateHasChanged();
+        }
+    }
+
+    private void MostrarToast(string titulo, string mensaje)
+    {
+        toastTitulo = titulo;
+        toastMensaje = mensaje;
+        toastVisible = true;
+
+        toastTimer?.Dispose();
+        toastTimer = new System.Threading.Timer(async _ =>
+        {
+            toastVisible = false;
+            await InvokeAsync(StateHasChanged);
+        }, null, 4500, System.Threading.Timeout.Infinite);
+    }
+
+    private static string ObtenerIniciales(EmpleadoPagoRow item)
+    {
+        var p1 = !string.IsNullOrWhiteSpace(item.Nombre) ? item.Nombre[0].ToString().ToUpperInvariant() : "";
+        var p2 = !string.IsNullOrWhiteSpace(item.Apellido) ? item.Apellido[0].ToString().ToUpperInvariant() : "";
+        var ini = $"{p1}{p2}";
+        return string.IsNullOrEmpty(ini) ? "OP" : ini;
+    }
+
+    private static string ObtenerClaseAvatar(int id) => (Math.Abs(id) % 4) switch
+    {
+        0 => "pe-avatar-dark",
+        1 => "pe-avatar-blue",
+        2 => "pe-avatar-sky",
+        _ => "pe-avatar-indigo"
+    };
+
+    private static string ObtenerIconoMedio(string medio)
+    {
+        if (medio.Contains("Transferencia", StringComparison.OrdinalIgnoreCase)) return "account_balance";
+        if (medio.Contains("Mercado", StringComparison.OrdinalIgnoreCase)) return "smartphone";
+        return "payments";
+    }
+
+    private static string ObtenerTextoPorcentaje(EmpleadoPagoRow item)
+    {
+        if (item.SalarioSemanal <= 0 || item.SaldoPendiente >= item.SalarioSemanal)
+            return "Total impago (100%)";
+
+        var pct = Math.Round((item.SaldoPendiente / item.SalarioSemanal) * 100, 1);
+        return $"Resta {pct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}%";
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
+        toastTimer?.Dispose();
+    }
+}

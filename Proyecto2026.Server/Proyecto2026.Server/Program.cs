@@ -35,11 +35,13 @@ builder.Services.AddScoped(sp =>
 #region Inyeccion de dependencias
 builder.Services.AddScoped<IHttpService, HttpService>();
 builder.Services.AddScoped<IPagoEmpleadoRepositorio, PagoEmpleadoRepositorio>();
+builder.Services.AddScoped<PagoEmpleadoRepositorio>();
 builder.Services.AddScoped<IPagoRepositorio1, PagoRepositorio>();
 builder.Services.AddScoped<ITrabajoRepositorio, TrabajoRepositorio>();
 builder.Services.AddScoped<IReservaRepositorio, ReservaRepositorio>();
 builder.Services.AddScoped<IClienteRepositorio, ClienteRepositorio>();
 builder.Services.AddScoped<IEmpleadoRepositorio, EmpleadoRepositorio>();
+builder.Services.AddScoped<IMaterialRepositorio, MaterialRepositorio>();
 #endregion
 
 var app = builder.Build(); // Crear la aplicación web

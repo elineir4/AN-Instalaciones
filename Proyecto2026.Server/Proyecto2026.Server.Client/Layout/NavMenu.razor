@@ -15,34 +15,58 @@
 <input type="checkbox" title="Menú de navegación" class="navbar-toggler" />
 
 <div class="nav-scrollable">
-    <nav class="nav flex-column">
+    <nav class="nav flex-column gap-1">
         <div class="nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill me-3"></span>
+                <span class="material-symbols-outlined fs-5 me-3">home</span>
                 <span>Inicio</span>
             </NavLink>
         </div>
         <div class="nav-item">
             <NavLink class="nav-link" href="clientes">
-                <span class="bi bi-people-fill me-3"></span>
+                <span class="material-symbols-outlined fs-5 me-3">group</span>
                 <span>Clientes</span>
             </NavLink>
         </div>
         <div class="nav-item">
+            <NavLink class="nav-link" href="pagos">
+                <span class="material-symbols-outlined fs-5 me-3">account_balance_wallet</span>
+                <span>Pagos y Saldos</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="trabajos">
+                <span class="material-symbols-outlined fs-5 me-3">architecture</span>
+                <span>Trabajos y Planos</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="materiales">
+                <span class="material-symbols-outlined fs-5 me-3">inventory_2</span>
+                <span>Materiales</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
             <NavLink class="nav-link" href="empleados">
-                <span class="bi bi-person-badge-fill me-3"></span>
+                <span class="material-symbols-outlined fs-5 me-3">badge</span>
                 <span>Empleados</span>
             </NavLink>
         </div>
         <div class="nav-item">
-            <NavLink class="nav-link" href="pagos">
-                <span class="bi bi-wallet2 me-3"></span>
-                <span>Pagos</span>
+            <NavLink class="nav-link" href="pago-empleados">
+                <span class="material-symbols-outlined fs-5 me-3">payments</span>
+                <span>Pago Empleados</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="reservas">
+                <span class="material-symbols-outlined fs-5 me-3">event_available</span>
+                <span>Reservas</span>
             </NavLink>
         </div>
         <div class="nav-item">
             <a class="nav-link" href="swagger/index.html" target="_blank">
-                <span class="bi bi-code-slash me-3"></span>
+                <span class="material-symbols-outlined fs-5 me-3">code</span>
                 <span>Swagger</span>
             </a>
         </div>
@@ -51,7 +75,7 @@
     <div class="sidebar-footer">
         <div class="gas-badge">
             <div class="gas-badge-left">
-                <span class="bi bi-patch-check-fill gas-icon"></span>
+                <span class="material-symbols-outlined gas-icon">verified</span>
                 <span class="gas-title">Matrícula Oficial Gas</span>
             </div>
             <span class="gas-chip">ACTIVA</span>
