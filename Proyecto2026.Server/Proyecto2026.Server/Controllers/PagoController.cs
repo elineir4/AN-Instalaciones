@@ -24,6 +24,23 @@ public class PagoController : ControllerBase
         return Ok(cliente);
     }
 
+    [HttpGet("cobrados-semana")]
+    public async Task<ActionResult> CobradosSemana()
+    {
+        var hoy = DateTime.Today;
+        var diff = (7 + (hoy.DayOfWeek - DayOfWeek.Monday)) % 7;
+        var inicioSemana = hoy.AddDays(-diff).Date;
+
+        var pagos = await repositorio.Select();
+        var pagosSemana = pagos.Where(p => p.FechaPago >= inicioSemana).ToList();
+
+        return Ok(new
+        {
+            Total = pagosSemana.Sum(p => p.MontoAbonado),
+            Cantidad = pagosSemana.Count
+        });
+    }
+
     [HttpGet("cliente/{clienteId}")]
     public async Task<ActionResult> ObtenerCliente(int clienteId)
     {
