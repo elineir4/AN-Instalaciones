@@ -17,6 +17,13 @@ public class PagoEmpleadoController : ControllerBase
     }
 
 
+    [HttpGet("lista")]
+    public async Task<ActionResult> ListaPagos()
+    {
+        var lista = await repositorio.Select();
+        return Ok(lista.OrderByDescending(p => p.FechaPago).ThenByDescending(p => p.Id));
+    }
+
     [HttpGet("lista/pendientes")]
     public async Task<ActionResult> ListaEmpleadosConPagosPendientes()
     {
@@ -49,14 +56,46 @@ public class PagoEmpleadoController : ControllerBase
         var pago = new PagoEmpleado
         {
             EmpleadoId = dto.EmpleadoId,
+            TrabajoId = (dto.TrabajoId.HasValue && dto.TrabajoId.Value > 0) ? dto.TrabajoId.Value : null,
             Monto = dto.Monto,
-            FechaPago = DateTime.Now,
+            FechaPago = dto.FechaPago == default ? DateTime.Now : dto.FechaPago,
             MedioPago = dto.MedioPago
         };
 
         var pagoRegistrado = await repositorio.RegistrarPagoEmpleado(pago);
 
         return Ok(pagoRegistrado);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult> ActualizarPagoEmpleado(int id, PagoEmpleadoDTO dto)
+    {
+        var lista = await repositorio.Select();
+        var pago = lista.FirstOrDefault(p => p.Id == id);
+        if (pago == null)
+            return NotFound("No se encontró el registro de pago.");
+
+        if (dto.Monto <= 0)
+            return BadRequest("El monto debe ser mayor a cero.");
+
+        pago.EmpleadoId = dto.EmpleadoId > 0 ? dto.EmpleadoId : pago.EmpleadoId;
+        pago.TrabajoId = (dto.TrabajoId.HasValue && dto.TrabajoId.Value > 0) ? dto.TrabajoId.Value : null;
+        pago.Monto = dto.Monto;
+        pago.FechaPago = dto.FechaPago == default ? pago.FechaPago : dto.FechaPago;
+        pago.MedioPago = string.IsNullOrWhiteSpace(dto.MedioPago) ? pago.MedioPago : dto.MedioPago;
+
+        var actualizado = await repositorio.Update(pago);
+        return Ok(actualizado);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult> EliminarPagoEmpleado(int id)
+    {
+        var eliminado = await repositorio.Delete(id);
+        if (!eliminado)
+            return NotFound("No se encontró el registro de pago.");
+
+        return Ok();
     }
 
 }

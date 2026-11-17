@@ -174,7 +174,7 @@ namespace Proyecto2026.BD.Migrations
                     b.Property<decimal>("Monto")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("TrabajoId")
+                    b.Property<int?>("TrabajoId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -322,9 +322,7 @@ namespace Proyecto2026.BD.Migrations
 
                     b.HasOne("Proyecto2026.BD.Datos.Entity.Trabajo", "Trabajo")
                         .WithMany()
-                        .HasForeignKey("TrabajoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("TrabajoId");
 
                     b.Navigation("Empleado");
 
