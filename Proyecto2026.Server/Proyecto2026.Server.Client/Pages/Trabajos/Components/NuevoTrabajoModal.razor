@@ -1,0 +1,508 @@
+@using System.Globalization
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Forms
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Servicios.ServicioHTTP
+@using Proyecto2026.Shared.DTO
+@inject IHttpService Http
+@inject HttpClient HttpClient
+
+@if (Visible)
+{
+    <div class="trb-modal-backdrop" @onclick="Cerrar"></div>
+
+    <div class="trb-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tituloModalTrabajo">
+        <div class="trb-modal-content">
+            <!-- Header -->
+            <div class="trb-modal-header">
+                <div>
+                    <h5 class="trb-modal-title" id="tituloModalTrabajo">
+                        @(EsEdicion ? $"Editar Trabajo #TRB-{TrabajoEditar!.Id}" : "Nuevo Trabajo")
+                    </h5>
+                    <span class="trb-modal-subtitle">Los campos marcados con * son obligatorios.</span>
+                </div>
+                <button type="button" class="trb-modal-close" @onclick="Cerrar" aria-label="Cerrar" disabled="@isEnviando">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="trb-modal-body">
+                @if (!string.IsNullOrWhiteSpace(errorServidor))
+                {
+                    <div class="trb-alert-error" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        <span>@errorServidor</span>
+                    </div>
+                }
+
+                <div class="row g-3">
+                    <!-- Nombre de la obra -->
+                    <div class="col-12">
+                        <label for="trbNombreObra" class="trb-label">
+                            Nombre de la obra <span class="text-danger">*</span>
+                        </label>
+                        <input id="trbNombreObra"
+                               type="text"
+                               class="trb-input @(errorNombre != null ? "is-invalid" : "")"
+                               placeholder="Ej: Edificio Los Robles - Red Sanitaria y Gas"
+                               autocomplete="off"
+                               value="@nombreObra"
+                               @oninput="OnNombreInput"
+                               disabled="@isEnviando" />
+                        @if (errorNombre != null)
+                        {
+                            <div class="trb-field-error">@errorNombre</div>
+                        }
+                    </div>
+
+                    <!-- Cliente -->
+                    <div class="col-12 col-sm-6">
+                        <label for="trbCliente" class="trb-label">
+                            Cliente <span class="text-danger">*</span>
+                        </label>
+                        <select id="trbCliente"
+                                class="trb-input @(errorCliente != null ? "is-invalid" : "")"
+                                value="@clienteIdSeleccionado"
+                                @onchange="OnClienteChanged"
+                                disabled="@isEnviando">
+                            <option value="0">Seleccionar cliente...</option>
+                            @foreach (var c in Clientes)
+                            {
+                                <option value="@c.Id">@c.NombreCompleto</option>
+                            }
+                        </select>
+                        @if (errorCliente != null)
+                        {
+                            <div class="trb-field-error">@errorCliente</div>
+                        }
+                    </div>
+
+                    <!-- Presupuesto -->
+                    <div class="col-12 col-sm-6">
+                        <label for="trbPresupuesto" class="trb-label">Presupuesto</label>
+                        <div class="trb-input-group">
+                            <span class="trb-input-prefix">$</span>
+                            <input id="trbPresupuesto"
+                                   type="number"
+                                   step="0.01"
+                                   min="0"
+                                   class="trb-input trb-input-with-prefix @(errorPresupuesto != null ? "is-invalid" : "")"
+                                   placeholder="0,00"
+                                   value="@presupuestoTexto"
+                                   @oninput="OnPresupuestoInput"
+                                   disabled="@isEnviando" />
+                        </div>
+                        @if (errorPresupuesto != null)
+                        {
+                            <div class="trb-field-error">@errorPresupuesto</div>
+                        }
+                    </div>
+
+                    <!-- Fecha de inicio -->
+                    <div class="col-12 col-sm-6">
+                        <label for="trbFechaInicio" class="trb-label">
+                            Fecha de inicio <span class="text-danger">*</span>
+                        </label>
+                        <input id="trbFechaInicio"
+                               type="date"
+                               class="trb-input @(errorFechas != null ? "is-invalid" : "")"
+                               value="@fechaInicioTexto"
+                               @onchange="OnFechaInicioChanged"
+                               disabled="@isEnviando" />
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="col-12 col-sm-6">
+                        <label for="trbEstado" class="trb-label">Estado de la obra</label>
+                        <select id="trbEstado"
+                                class="trb-input"
+                                value="@(esFinalizado ? "finalizado" : "encurso")"
+                                @onchange="OnEstadoChanged"
+                                disabled="@isEnviando">
+                            <option value="encurso">En curso</option>
+                            <option value="finalizado">Finalizado</option>
+                        </select>
+                    </div>
+
+                    <!-- Fecha de fin (si finalizado) -->
+                    @if (esFinalizado)
+                    {
+                        <div class="col-12">
+                            <label for="trbFechaFin" class="trb-label">
+                                Fecha de finalización <span class="text-danger">*</span>
+                            </label>
+                            <input id="trbFechaFin"
+                                   type="date"
+                                   class="trb-input @(errorFechas != null ? "is-invalid" : "")"
+                                   value="@fechaFinTexto"
+                                   @onchange="OnFechaFinChanged"
+                                   disabled="@isEnviando" />
+                        </div>
+                    }
+
+                    @if (errorFechas != null)
+                    {
+                        <div class="col-12">
+                            <div class="trb-field-error mt-0">@errorFechas</div>
+                        </div>
+                    }
+
+                    <!-- Plano AutoCAD opcional -->
+                    <div class="col-12">
+                        <label class="trb-label">
+                            Plano AutoCAD (.DWG / .DXF) <span class="text-muted fw-normal">(opcional)</span>
+                        </label>
+                        <label for="trbArchivoPlano" class="trb-file-drop w-100 mb-0" style="cursor: pointer;">
+                            <InputFile id="trbArchivoPlano"
+                                       accept=".dwg,.dxf"
+                                       OnChange="OnArchivoSeleccionado"
+                                       class="d-none"
+                                       disabled="@isEnviando" />
+                            <div class="trb-file-info">
+                                <span class="material-symbols-outlined trb-file-icon">architecture</span>
+                                @if (archivoPlano != null)
+                                {
+                                    <div>
+                                        <div class="trb-file-name">@archivoPlano.Name</div>
+                                        <div class="trb-file-size">@FormatearTamano(archivoPlano.Size) · Listo para subir</div>
+                                    </div>
+                                }
+                                else if (EsEdicion && TrabajoEditar!.TienePlano)
+                                {
+                                    <div>
+                                        <div class="trb-file-name">Plano actual: @TrabajoEditar.NombreArchivoPlano</div>
+                                        <div class="trb-file-size">Seleccioná otro archivo .dwg o .dxf si querés reemplazarlo</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div>
+                                        <div class="trb-file-name">Seleccionar archivo .DWG o .DXF</div>
+                                        <div class="trb-file-size">Tamaño máximo permitido: 100 MB</div>
+                                    </div>
+                                }
+                            </div>
+                        </label>
+                        @if (errorArchivo != null)
+                        {
+                            <div class="trb-field-error">@errorArchivo</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="trb-modal-footer">
+                <button type="button" class="trb-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
+                    Cancelar
+                </button>
+                <button type="button" class="trb-btn-primary" @onclick="Guardar" disabled="@isEnviando">
+                    @if (isEnviando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+                        <span>@(EsEdicion ? "Guardar Cambios" : "Crear Trabajo")</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public TrabajoItem? TrabajoEditar { get; set; }
+    [Parameter] public List<TrabajoClienteItem> Clientes { get; set; } = new();
+    [Parameter] public EventCallback<string> OnTrabajoGuardado { get; set; }
+
+    private const long MaxFileSize = 100_000_000;
+
+    private bool EsEdicion => TrabajoEditar != null;
+    private bool prevVisible;
+    private int? prevTrabajoId;
+
+    private string nombreObra = string.Empty;
+    private int clienteIdSeleccionado;
+    private string presupuestoTexto = "0";
+    private string fechaInicioTexto = DateTime.Today.ToString("yyyy-MM-dd");
+    private string fechaFinTexto = DateTime.Today.ToString("yyyy-MM-dd");
+    private bool esFinalizado;
+    private IBrowserFile? archivoPlano;
+
+    private string? errorNombre;
+    private string? errorCliente;
+    private string? errorPresupuesto;
+    private string? errorFechas;
+    private string? errorArchivo;
+    private string? errorServidor;
+    private bool isEnviando;
+
+    protected override void OnParametersSet()
+    {
+        var currentId = TrabajoEditar?.Id;
+        if (Visible && (!prevVisible || prevTrabajoId != currentId))
+        {
+            InicializarFormulario();
+        }
+        prevVisible = Visible;
+        prevTrabajoId = currentId;
+    }
+
+    private void InicializarFormulario()
+    {
+        errorNombre = null;
+        errorCliente = null;
+        errorPresupuesto = null;
+        errorFechas = null;
+        errorArchivo = null;
+        errorServidor = null;
+        archivoPlano = null;
+        isEnviando = false;
+
+        if (TrabajoEditar != null)
+        {
+            nombreObra = TrabajoEditar.NombreObra;
+            clienteIdSeleccionado = TrabajoEditar.ClienteId;
+            presupuestoTexto = TrabajoEditar.Presupuesto.ToString("0.##", CultureInfo.InvariantCulture);
+            fechaInicioTexto = TrabajoEditar.FechaInicio.ToString("yyyy-MM-dd");
+            esFinalizado = TrabajoEditar.EstaFinalizado;
+            fechaFinTexto = TrabajoEditar.EstaFinalizado
+                ? TrabajoEditar.FechaFin.ToString("yyyy-MM-dd")
+                : DateTime.Today.ToString("yyyy-MM-dd");
+        }
+        else
+        {
+            nombreObra = string.Empty;
+            clienteIdSeleccionado = 0;
+            presupuestoTexto = "0";
+            fechaInicioTexto = DateTime.Today.ToString("yyyy-MM-dd");
+            esFinalizado = false;
+            fechaFinTexto = DateTime.Today.ToString("yyyy-MM-dd");
+        }
+    }
+
+    private void OnNombreInput(ChangeEventArgs e)
+    {
+        nombreObra = e.Value?.ToString() ?? string.Empty;
+        errorNombre = null;
+        errorServidor = null;
+    }
+
+    private void OnClienteChanged(ChangeEventArgs e)
+    {
+        int.TryParse(e.Value?.ToString(), out clienteIdSeleccionado);
+        errorCliente = null;
+        errorServidor = null;
+    }
+
+    private void OnPresupuestoInput(ChangeEventArgs e)
+    {
+        presupuestoTexto = e.Value?.ToString() ?? string.Empty;
+        errorPresupuesto = null;
+        errorServidor = null;
+    }
+
+    private void OnFechaInicioChanged(ChangeEventArgs e)
+    {
+        fechaInicioTexto = e.Value?.ToString() ?? DateTime.Today.ToString("yyyy-MM-dd");
+        errorFechas = null;
+        errorServidor = null;
+    }
+
+    private void OnEstadoChanged(ChangeEventArgs e)
+    {
+        esFinalizado = (e.Value?.ToString() == "finalizado");
+        if (esFinalizado && string.IsNullOrWhiteSpace(fechaFinTexto))
+        {
+            fechaFinTexto = DateTime.Today.ToString("yyyy-MM-dd");
+        }
+        errorFechas = null;
+    }
+
+    private void OnFechaFinChanged(ChangeEventArgs e)
+    {
+        fechaFinTexto = e.Value?.ToString() ?? DateTime.Today.ToString("yyyy-MM-dd");
+        errorFechas = null;
+        errorServidor = null;
+    }
+
+    private void OnArchivoSeleccionado(InputFileChangeEventArgs e)
+    {
+        errorArchivo = null;
+        try
+        {
+            if (e.FileCount == 0)
+            {
+                archivoPlano = null;
+                return;
+            }
+
+            var file = e.GetMultipleFiles(1).FirstOrDefault();
+            if (file == null)
+            {
+                archivoPlano = null;
+                return;
+            }
+
+            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (ext != ".dwg" && ext != ".dxf")
+            {
+                errorArchivo = "Formato no válido. Solo se permiten archivos .dwg o .dxf.";
+                archivoPlano = null;
+                return;
+            }
+
+            if (file.Size > MaxFileSize)
+            {
+                errorArchivo = "El archivo supera el límite permitido de 100 MB.";
+                archivoPlano = null;
+                return;
+            }
+
+            archivoPlano = file;
+        }
+        catch (Exception ex)
+        {
+            errorArchivo = $"No se pudo leer el archivo seleccionado: {ex.Message}";
+            archivoPlano = null;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (isEnviando) return;
+
+        errorNombre = null;
+        errorCliente = null;
+        errorPresupuesto = null;
+        errorFechas = null;
+        errorServidor = null;
+
+        if (string.IsNullOrWhiteSpace(nombreObra))
+            errorNombre = "El nombre de la obra es obligatorio.";
+
+        if (clienteIdSeleccionado <= 0)
+            errorCliente = "Debe seleccionar un cliente.";
+
+        decimal presupuesto = 0;
+        if (!string.IsNullOrWhiteSpace(presupuestoTexto))
+        {
+            var normalizado = presupuestoTexto.Replace(",", ".");
+            if (!decimal.TryParse(normalizado, NumberStyles.Number, CultureInfo.InvariantCulture, out presupuesto) || presupuesto < 0)
+                errorPresupuesto = "Ingresá un presupuesto válido mayor o igual a 0.";
+        }
+
+        if (!DateTime.TryParse(fechaInicioTexto, out var fechaInicio))
+            errorFechas = "La fecha de inicio no es válida.";
+
+        DateTime? fechaFin = null;
+        if (esFinalizado)
+        {
+            if (!DateTime.TryParse(fechaFinTexto, out var parsedFin))
+                errorFechas = "La fecha de finalización no es válida.";
+            else if (parsedFin.Date < fechaInicio.Date)
+                errorFechas = "La fecha de finalización no puede ser anterior a la fecha de inicio.";
+            else
+                fechaFin = parsedFin;
+        }
+
+        if (errorNombre != null || errorCliente != null || errorPresupuesto != null || errorFechas != null || errorArchivo != null)
+            return;
+
+        isEnviando = true;
+        try
+        {
+            var dto = new TrabajoFormDTO
+            {
+                Id = TrabajoEditar?.Id ?? 0,
+                NombreObra = nombreObra.Trim(),
+                ClienteId = clienteIdSeleccionado,
+                FechaInicio = fechaInicio,
+                FechaFin = fechaFin,
+                Presupuesto = presupuesto,
+                Planos = TrabajoEditar?.Planos ?? string.Empty,
+                ReservaId = TrabajoEditar?.ReservaId
+            };
+
+            TrabajoItem? guardado = null;
+            if (EsEdicion)
+            {
+                var resp = await Http.PutAsync<TrabajoFormDTO, TrabajoItem>($"api/trabajos/{TrabajoEditar!.Id}", dto);
+                if (resp.Error)
+                {
+                    errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+                    return;
+                }
+                guardado = resp.Dato;
+            }
+            else
+            {
+                var resp = await Http.PostAsync<TrabajoFormDTO, TrabajoItem>("api/trabajos", dto);
+                if (resp.Error)
+                {
+                    errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+                    return;
+                }
+                guardado = resp.Dato;
+            }
+
+            if (archivoPlano != null && guardado != null)
+            {
+                using var content = new MultipartFormDataContent();
+                using var stream = archivoPlano.OpenReadStream(MaxFileSize);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                using var fileContent = new ByteArrayContent(ms.ToArray());
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                content.Add(fileContent, "archivo", archivoPlano.Name);
+
+                var uploadResp = await HttpClient.PostAsync($"api/trabajos/{guardado.Id}/plano", content);
+                if (!uploadResp.IsSuccessStatusCode)
+                {
+                    var errBody = await uploadResp.Content.ReadAsStringAsync();
+                    errorServidor = string.IsNullOrWhiteSpace(errBody)
+                        ? "El trabajo se guardó, pero falló la subida del plano."
+                        : $"Trabajo guardado, pero falló el plano: {errBody}";
+                    return;
+                }
+            }
+
+            var mensaje = EsEdicion
+                ? $"Se actualizó la obra \"{dto.NombreObra}\"."
+                : $"Se registró la obra \"{dto.NombreObra}\".";
+
+            Visible = false;
+            await VisibleChanged.InvokeAsync(false);
+            await OnTrabajoGuardado.InvokeAsync(mensaje);
+        }
+        catch (Exception ex)
+        {
+            errorServidor = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isEnviando = false;
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isEnviando) return;
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private static string FormatearTamano(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.0} KB";
+        return $"{bytes / (1024.0 * 1024.0):0.0} MB";
+    }
+}

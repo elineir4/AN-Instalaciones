@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Proyecto2026.BD.Datos.Entity;
 using Proyecto2026.Repositorio.Repositorios;
+using Proyecto2026.Shared.DTO;
 
 namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controllers
 {
@@ -9,11 +10,16 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
     public class TrabajosController : ControllerBase
     {
         private readonly ITrabajoRepositorio _repositorio;
+        private readonly IClienteRepositorio _clienteRepositorio;
         private readonly IWebHostEnvironment _env;
 
-        public TrabajosController(ITrabajoRepositorio repositorio, IWebHostEnvironment env)
+        public TrabajosController(
+            ITrabajoRepositorio repositorio,
+            IClienteRepositorio clienteRepositorio,
+            IWebHostEnvironment env)
         {
             _repositorio = repositorio;
+            _clienteRepositorio = clienteRepositorio;
             _env = env;
         }
 
@@ -54,28 +60,75 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
 
         // POST: api/trabajos
         [HttpPost]
-        public async Task<ActionResult<Trabajo>> Post([FromBody] Trabajo trabajo)
+        public async Task<ActionResult<Trabajo>> Post([FromBody] TrabajoFormDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            if (string.IsNullOrWhiteSpace(dto.NombreObra))
+                return BadRequest("El nombre de la obra es obligatorio.");
+
+            if (dto.FechaFin.HasValue && dto.FechaFin.Value.Date < dto.FechaInicio.Date)
+                return BadRequest("La fecha de fin no puede ser anterior a la fecha de inicio.");
+
+            var clienteExiste = await _clienteRepositorio.Existe(dto.ClienteId);
+            if (!clienteExiste)
+                return BadRequest($"El cliente con ID {dto.ClienteId} no existe.");
+
+            var trabajo = new Trabajo
+            {
+                NombreObra = dto.NombreObra.Trim(),
+                ClienteId = dto.ClienteId,
+                FechaInicio = dto.FechaInicio,
+                FechaFin = dto.FechaFin ?? DateTime.MinValue,
+                Presupuesto = dto.Presupuesto,
+                Planos = dto.Planos ?? string.Empty,
+                ReservaId = dto.ReservaId
+            };
+
             var creado = await _repositorio.Insert(trabajo);
-            return CreatedAtAction(nameof(GetById), new { id = creado.Id }, creado);
+            var completo = await _repositorio.ObtenerPorIdConRelacionesAsync(creado.Id) ?? creado;
+            return CreatedAtAction(nameof(GetById), new { id = creado.Id }, completo);
         }
 
         // PUT: api/trabajos/5
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<Trabajo>> Put(int id, [FromBody] Trabajo trabajo)
+        public async Task<ActionResult<Trabajo>> Put(int id, [FromBody] TrabajoFormDTO dto)
         {
-            if (id != trabajo.Id)
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (dto.Id != 0 && id != dto.Id)
                 return BadRequest("El ID de la URL no coincide con el ID del trabajo.");
 
-            var existe = await _repositorio.Existe(id);
-            if (!existe)
+            if (string.IsNullOrWhiteSpace(dto.NombreObra))
+                return BadRequest("El nombre de la obra es obligatorio.");
+
+            if (dto.FechaFin.HasValue && dto.FechaFin.Value.Date < dto.FechaInicio.Date)
+                return BadRequest("La fecha de fin no puede ser anterior a la fecha de inicio.");
+
+            var trabajoExistente = await _repositorio.ObtenerPorIdAsync(id);
+            if (trabajoExistente == null)
                 return NotFound($"No se encontró el trabajo con ID {id}.");
 
-            var actualizado = await _repositorio.Update(trabajo);
-            return Ok(actualizado);
+            var clienteExiste = await _clienteRepositorio.Existe(dto.ClienteId);
+            if (!clienteExiste)
+                return BadRequest($"El cliente con ID {dto.ClienteId} no existe.");
+
+            trabajoExistente.NombreObra = dto.NombreObra.Trim();
+            trabajoExistente.ClienteId = dto.ClienteId;
+            trabajoExistente.FechaInicio = dto.FechaInicio;
+            trabajoExistente.FechaFin = dto.FechaFin ?? DateTime.MinValue;
+            trabajoExistente.Presupuesto = dto.Presupuesto;
+            trabajoExistente.ReservaId = dto.ReservaId;
+            if (dto.Planos != null)
+            {
+                trabajoExistente.Planos = dto.Planos;
+            }
+
+            await _repositorio.Update(trabajoExistente);
+            var completo = await _repositorio.ObtenerPorIdConRelacionesAsync(id) ?? trabajoExistente;
+            return Ok(completo);
         }
 
         // POST: api/trabajos/5/plano (Subir archivo AutoCAD .dwg o .dxf)
@@ -90,20 +143,20 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
             if (extension != ".dwg" && extension != ".dxf")
                 return BadRequest("Formato no válido. Solo se permiten archivos de AutoCAD (.dwg o .dxf).");
 
-            var trabajos = await _repositorio.Select();
-            var trabajo = trabajos.FirstOrDefault(t => t.Id == id);
+            var trabajo = await _repositorio.ObtenerPorIdAsync(id);
             if (trabajo == null)
                 return NotFound($"No se encontró el trabajo con ID {id}.");
 
-            var carpetaPlanos = Path.Combine(_env.WebRootPath, "planos");
+            // Guardar fuera de wwwroot para evitar reinicios de dotnet watch / Hot Reload al subir archivos
+            var carpetaPlanos = Path.Combine(_env.ContentRootPath, "App_Data", "planos");
             if (!Directory.Exists(carpetaPlanos))
                 Directory.CreateDirectory(carpetaPlanos);
 
             // Si ya tenía un plano cargado previamente, elimina el archivo anterior
             if (!string.IsNullOrEmpty(trabajo.Planos))
             {
-                var rutaAnterior = Path.Combine(_env.WebRootPath, trabajo.Planos.TrimStart('/'));
-                if (System.IO.File.Exists(rutaAnterior))
+                var rutaAnterior = ResolverRutaPlano(trabajo.Planos);
+                if (rutaAnterior != null && System.IO.File.Exists(rutaAnterior))
                     System.IO.File.Delete(rutaAnterior);
             }
 
@@ -115,7 +168,7 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
                 await archivo.CopyToAsync(stream);
             }
 
-            trabajo.Planos = $"/planos/{nombreArchivo}";
+            trabajo.Planos = nombreArchivo;
             await _repositorio.Update(trabajo);
 
             return Ok(new
@@ -125,17 +178,42 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
             });
         }
 
+        // GET: api/trabajos/5/plano (Descargar archivo AutoCAD .dwg o .dxf)
+        [HttpGet("{id:int}/plano")]
+        public async Task<ActionResult> DescargarPlano(int id)
+        {
+            var trabajo = await _repositorio.ObtenerPorIdAsync(id);
+            if (trabajo == null)
+                return NotFound($"No se encontró el trabajo con ID {id}.");
+
+            if (string.IsNullOrWhiteSpace(trabajo.Planos))
+                return NotFound("Este trabajo no tiene un plano cargado.");
+
+            var rutaCompleta = ResolverRutaPlano(trabajo.Planos);
+            if (rutaCompleta == null || !System.IO.File.Exists(rutaCompleta))
+                return NotFound("El archivo del plano no se encuentra en el servidor.");
+
+            var extension = Path.GetExtension(rutaCompleta).ToLowerInvariant();
+            var nombreLimpio = string.Concat(trabajo.NombreObra.Split(Path.GetInvalidFileNameChars())).Trim();
+            if (string.IsNullOrWhiteSpace(nombreLimpio))
+                nombreLimpio = $"trabajo_{id}";
+
+            var nombreDescarga = $"{nombreLimpio}{extension}";
+            return PhysicalFile(rutaCompleta, "application/octet-stream", nombreDescarga);
+        }
+
         // DELETE: api/trabajos/5
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
-            // Opcional: borrar también el archivo físico del plano si existe antes de eliminar el registro
-            var trabajos = await _repositorio.Select();
-            var trabajo = trabajos.FirstOrDefault(t => t.Id == id);
-            if (trabajo != null && !string.IsNullOrEmpty(trabajo.Planos))
+            var trabajo = await _repositorio.ObtenerPorIdAsync(id);
+            if (trabajo == null)
+                return NotFound($"No se encontró el trabajo con ID {id}.");
+
+            if (!string.IsNullOrEmpty(trabajo.Planos))
             {
-                var rutaPlano = Path.Combine(_env.WebRootPath, trabajo.Planos.TrimStart('/'));
-                if (System.IO.File.Exists(rutaPlano))
+                var rutaPlano = ResolverRutaPlano(trabajo.Planos);
+                if (rutaPlano != null && System.IO.File.Exists(rutaPlano))
                     System.IO.File.Delete(rutaPlano);
             }
 
@@ -144,6 +222,24 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
                 return NotFound($"No se encontró el trabajo con ID {id}.");
 
             return NoContent();
+        }
+
+        private string? ResolverRutaPlano(string valorPlanos)
+        {
+            var nombreArchivo = Path.GetFileName(valorPlanos.TrimStart('/'));
+            if (string.IsNullOrWhiteSpace(nombreArchivo))
+                return null;
+
+            var rutaAppData = Path.Combine(_env.ContentRootPath, "App_Data", "planos", nombreArchivo);
+            if (System.IO.File.Exists(rutaAppData))
+                return rutaAppData;
+
+            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var rutaWwwroot = Path.Combine(webRoot, valorPlanos.TrimStart('/'));
+            if (System.IO.File.Exists(rutaWwwroot))
+                return rutaWwwroot;
+
+            return rutaAppData;
         }
     }
 }

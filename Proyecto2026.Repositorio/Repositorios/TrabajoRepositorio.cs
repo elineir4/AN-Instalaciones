@@ -59,7 +59,7 @@ public class TrabajoRepositorio : Repositorio<Trabajo>, ITrabajoRepositorio
         return await context.Set<Trabajo>()
             .Include(t => t.Cliente)
             .Include(t => t.Reserva)
-            .Where(t => t.FechaFin != null)
+            .Where(t => t.FechaFin > DateTime.MinValue)
             .OrderByDescending(t => t.FechaFin)
             .ToListAsync();
     }

@@ -1,0 +1,844 @@
+/* ==========================================================================
+   Sistema Visual: AN Instalaciones - Pantalla Trabajos y Planos
+   ========================================================================== */
+
+.trb-page {
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0b1c30;
+    padding-bottom: 3rem;
+}
+
+/* Header */
+.trb-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+}
+
+@media (min-width: 992px) {
+    .trb-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.trb-title {
+    font-size: 2rem;
+    line-height: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #0b1c30;
+    margin: 0 0 0.25rem 0;
+}
+
+.trb-subtitle {
+    font-size: 0.95rem;
+    color: #43474d;
+    margin: 0;
+}
+
+::deep .trb-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 1.15rem;
+    border-radius: 0.5rem;
+    background-color: #0051d5;
+    color: #ffffff;
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0, 81, 213, 0.25);
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+::deep .trb-btn-primary:hover:not(:disabled) {
+    background-color: #316bf3;
+    transform: translateY(-1px);
+}
+
+::deep .trb-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+::deep .trb-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 0.5rem;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+::deep .trb-btn-secondary:hover:not(:disabled) {
+    background-color: #e2e8f0;
+}
+
+/* KPI Grid */
+.trb-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.trb-kpi-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.35rem;
+    box-shadow: 0 1px 4px rgba(11, 28, 48, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.trb-kpi-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #475569;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+
+.trb-kpi-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+}
+
+.trb-kpi-value {
+    font-size: 1.85rem;
+    line-height: 1.1;
+    font-weight: 700;
+    color: #0b1c30;
+}
+
+.trb-kpi-unit {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #475569;
+}
+
+.trb-kpi-foot {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.trb-foot-emerald {
+    color: #059669;
+}
+
+.trb-foot-blue {
+    color: #0051d5;
+}
+
+.trb-dot-emerald {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #10b981;
+}
+
+.trb-kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.trb-kpi-icon-blue {
+    background-color: #eff4ff;
+    color: #0051d5;
+}
+
+.trb-kpi-icon-emerald {
+    background-color: #ecfdf5;
+    color: #059669;
+}
+
+/* Error Card */
+.trb-error-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background-color: #ffffff;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #dc2626;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Filter Bar */
+.trb-filter-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 4px rgba(11, 28, 48, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+@media (min-width: 1100px) {
+    .trb-filter-card {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.trb-search-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 420px;
+    width: 100%;
+}
+
+.trb-search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 19px;
+    color: #64748b;
+    pointer-events: none;
+}
+
+.trb-search-input {
+    width: 100%;
+    height: 40px;
+    padding: 0.45rem 2.2rem 0.45rem 2.5rem;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    color: #0f172a;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trb-search-input:focus {
+    background-color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    outline: none;
+}
+
+.trb-clear-search {
+    position: absolute;
+    right: 0.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.trb-filters-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.trb-select {
+    height: 40px;
+    padding: 0 0.85rem;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+.trb-select:focus {
+    border-color: #2563eb;
+    outline: none;
+}
+
+.trb-btn-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.5rem;
+    border: 1px solid #cbd5e1;
+    background-color: #ffffff;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.trb-btn-icon:hover:not(:disabled) {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+.trb-btn-icon:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Table Card */
+.trb-table-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 4px rgba(11, 28, 48, 0.04);
+    overflow: hidden;
+}
+
+.trb-table {
+    width: 100%;
+    min-width: 920px;
+    margin-bottom: 0;
+}
+
+.trb-thead th {
+    background-color: #f8fafc !important;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.9rem 1.15rem;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.trb-row td {
+    padding: 0.95rem 1.15rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.trb-row:hover td {
+    background-color: #f8fafc;
+}
+
+.trb-code-badge {
+    display: inline-block;
+    padding: 0.3rem 0.55rem;
+    border-radius: 0.4rem;
+    background-color: #eff4ff;
+    color: #0051d5;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.trb-obra-name {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #0b1c30;
+}
+
+.trb-obra-sub {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.trb-cliente-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #0f172a;
+}
+
+.trb-cliente-sub {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.trb-monto {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #0f2b48;
+    white-space: nowrap;
+}
+
+.trb-fecha-main {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.trb-fecha-sub {
+    font-size: 0.76rem;
+    color: #64748b;
+}
+
+/* Plano AutoCAD Pill */
+.trb-plano-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.6rem;
+    border-radius: 0.5rem;
+    background-color: #eff4ff;
+    border: 1px solid #dbeafe;
+    max-width: 290px;
+}
+
+.trb-plano-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.trb-plano-trigger:hover .trb-plano-name {
+    color: #0051d5;
+    text-decoration: underline;
+}
+
+.trb-plano-icon {
+    font-size: 18px;
+    color: #0051d5;
+    flex-shrink: 0;
+}
+
+.trb-plano-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.trb-plano-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 125px;
+}
+
+.trb-plano-ext {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.trb-plano-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 0.35rem;
+    border: none;
+    background: transparent;
+    color: #0051d5;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.trb-plano-action:hover {
+    background-color: #dbeafe;
+}
+
+.trb-btn-subir-plano {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.42rem 0.8rem;
+    border-radius: 0.5rem;
+    background-color: #f8fafc;
+    border: 1px dashed #93c5fd;
+    color: #0051d5;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.trb-btn-subir-plano:hover {
+    background-color: #eff4ff;
+    border-color: #0051d5;
+}
+
+/* Status Badges */
+.trb-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.trb-status-encurso {
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.trb-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #10b981;
+}
+
+.trb-status-finalizado {
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+}
+
+/* Row Actions */
+.trb-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.trb-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.4rem;
+    border: none;
+    background: transparent;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.trb-action-btn:hover:not(:disabled) {
+    background-color: #eff4ff;
+    color: #0051d5;
+}
+
+.trb-action-delete:hover:not(:disabled) {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.trb-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Empty State */
+.trb-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.trb-empty-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background-color: #eff4ff;
+    color: #0051d5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+}
+
+/* Modals */
+::deep .trb-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 43, 72, 0.45);
+    backdrop-filter: blur(3px);
+    z-index: 1050;
+}
+
+::deep .trb-modal-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 2rem);
+    max-width: 600px;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    z-index: 1055;
+}
+
+::deep .trb-modal-dialog-sm {
+    max-width: 480px;
+}
+
+::deep .trb-modal-dialog-xl {
+    max-width: 960px;
+}
+
+::deep .trb-viewer-body {
+    position: relative;
+    height: 520px;
+    background-color: #0b1c30;
+    overflow: hidden;
+}
+
+::deep .trb-viewer-host,
+::deep .trb-viewer-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+    overflow: hidden;
+}
+
+::deep .trb-viewer-host:active,
+::deep .trb-viewer-canvas:active {
+    cursor: grabbing;
+}
+
+::deep .trb-viewer-host svg {
+    shape-rendering: geometricPrecision;
+}
+
+::deep .trb-viewer-host svg path,
+::deep .trb-viewer-host svg line,
+::deep .trb-viewer-host svg polyline,
+::deep .trb-viewer-host svg polygon,
+::deep .trb-viewer-host svg circle,
+::deep .trb-viewer-host svg ellipse,
+::deep .trb-viewer-host svg rect {
+    vector-effect: non-scaling-stroke;
+    stroke-width: 1.15px;
+}
+
+::deep .trb-viewer-host svg text,
+::deep .trb-viewer-host svg tspan {
+    stroke: none !important;
+}
+
+::deep .trb-viewer-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(11, 28, 48, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+::deep .trb-modal-content {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 25px -5px rgba(15, 43, 72, 0.15), 0 8px 10px -6px rgba(15, 43, 72, 0.08);
+    overflow: hidden;
+}
+
+::deep .trb-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.35rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+::deep .trb-modal-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #0b1c30;
+    margin: 0;
+}
+
+::deep .trb-modal-subtitle {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+::deep .trb-modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.4rem;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+::deep .trb-modal-close:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+::deep .trb-modal-body {
+    padding: 1.25rem 1.35rem;
+}
+
+::deep .trb-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    padding: 0.95rem 1.35rem;
+    background-color: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+::deep .trb-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 0.35rem;
+}
+
+::deep .trb-input {
+    width: 100%;
+    height: 40px;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.4rem;
+    font-size: 0.9rem;
+    color: #0f172a;
+    background-color: #ffffff;
+}
+
+::deep .trb-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    outline: none;
+}
+
+::deep .trb-input.is-invalid {
+    border-color: #dc2626;
+}
+
+::deep .trb-input-group {
+    display: flex;
+    align-items: center;
+}
+
+::deep .trb-input-prefix {
+    height: 40px;
+    padding: 0 0.75rem;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-right: none;
+    border-radius: 0.4rem 0 0 0.4rem;
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    color: #475569;
+}
+
+::deep .trb-input-with-prefix {
+    border-radius: 0 0.4rem 0.4rem 0;
+}
+
+::deep .trb-field-error {
+    font-size: 0.78rem;
+    color: #dc2626;
+    margin-top: 0.25rem;
+}
+
+::deep .trb-alert-error {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+::deep .trb-file-drop {
+    position: relative;
+    border: 1.5px dashed #93c5fd;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+::deep .trb-file-drop:hover {
+    border-color: #0051d5;
+    background-color: #eff4ff;
+}
+
+::deep .trb-file-drop-lg {
+    padding: 1.5rem 1.25rem;
+}
+
+::deep .trb-file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+::deep .trb-file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    pointer-events: none;
+}
+
+::deep .trb-file-icon {
+    font-size: 28px;
+    color: #0051d5;
+}
+
+::deep .trb-file-name {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+::deep .trb-file-size {
+    font-size: 0.76rem;
+    color: #64748b;
+}

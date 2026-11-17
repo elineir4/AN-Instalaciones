@@ -1,0 +1,784 @@
+@page "/trabajos"
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Pages.Pagos.Components
+@using Proyecto2026.Server.Client.Pages.Trabajos.Components
+@using Proyecto2026.Servicios.ServicioHTTP
+@using Proyecto2026.Shared.DTO
+@inject IHttpService Http
+@implements IDisposable
+
+<PageTitle>Trabajos y Planos - AN Instalaciones</PageTitle>
+
+<div class="trb-page">
+    <!-- Encabezado -->
+    <div class="trb-header">
+        <div class="trb-header-left">
+            <h1 class="trb-title">Trabajos y Planos</h1>
+            <p class="trb-subtitle">
+                Gestión de obras, instalaciones de gas y sanitarias, planos técnicos y seguimiento de proyectos — AN Instalaciones
+            </p>
+        </div>
+
+        <div class="trb-header-actions">
+            <button type="button"
+                    class="trb-btn-primary"
+                    disabled="@cargando"
+                    @onclick="AbrirModalNuevo">
+                <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                <span>+ Nuevo Trabajo</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 3 Tarjetas KPI -->
+    <section class="trb-kpi-grid">
+        <div class="trb-kpi-card">
+            <div>
+                <span class="trb-kpi-label">OBRAS EN CURSO</span>
+                <div class="trb-kpi-value-row">
+                    <span class="trb-kpi-value">@(cargando ? "..." : ObrasEnCurso.ToString())</span>
+                    <span class="trb-kpi-unit">activas</span>
+                </div>
+                <div class="trb-kpi-foot trb-foot-emerald">
+                    <span class="trb-dot-emerald"></span>
+                    <span>En ejecución técnica</span>
+                </div>
+            </div>
+            <div class="trb-kpi-icon trb-kpi-icon-blue">
+                <span class="material-symbols-outlined">construction</span>
+            </div>
+        </div>
+
+        <div class="trb-kpi-card">
+            <div>
+                <span class="trb-kpi-label">TRABAJOS FINALIZADOS</span>
+                <div class="trb-kpi-value-row">
+                    <span class="trb-kpi-value">@(cargando ? "..." : TrabajosFinalizados.ToString())</span>
+                    <span class="trb-kpi-unit">entregados</span>
+                </div>
+                <div class="trb-kpi-foot trb-foot-emerald">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">check_circle</span>
+                    <span>Obras completadas</span>
+                </div>
+            </div>
+            <div class="trb-kpi-icon trb-kpi-icon-emerald">
+                <span class="material-symbols-outlined">check_circle</span>
+            </div>
+        </div>
+
+        <div class="trb-kpi-card">
+            <div>
+                <span class="trb-kpi-label">PLANOS AUTOCAD CARGADOS</span>
+                <div class="trb-kpi-value-row">
+                    <span class="trb-kpi-value">@(cargando ? "..." : PlanosCargados.ToString())</span>
+                    <span class="trb-kpi-unit">planos</span>
+                </div>
+                <div class="trb-kpi-foot trb-foot-blue">
+                    <span>Formato .DWG / .DXF</span>
+                </div>
+            </div>
+            <div class="trb-kpi-icon trb-kpi-icon-blue">
+                <span class="material-symbols-outlined">straighten</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Error de carga -->
+    @if (!cargando && !string.IsNullOrWhiteSpace(errorCarga))
+    {
+        <div class="trb-error-card">
+            <span class="material-symbols-outlined text-danger" style="font-size: 32px;">warning</span>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold text-danger mb-1">Error al consultar los trabajos</h6>
+                <p class="text-muted small mb-2">@errorCarga</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger btn-sm" @onclick="() => CargarDatos(mostrarSpinner: true)">
+                        Reintentar
+                    </button>
+                    @if (sesionExpirada)
+                    {
+                        <a href="/login" class="btn btn-outline-danger btn-sm">
+                            Ir a Iniciar Sesión
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Barra de filtros -->
+    <section class="trb-filter-card">
+        <div class="trb-search-wrap">
+            <span class="material-symbols-outlined trb-search-icon">search</span>
+            <input type="text"
+                   class="trb-search-input"
+                   placeholder="Buscar por obra, cliente o código..."
+                   aria-label="Buscar por obra, cliente o código"
+                   value="@terminoBusqueda"
+                   @oninput="OnBusquedaInput" />
+            @if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+            {
+                <button type="button" class="trb-clear-search" @onclick="LimpiarBusqueda" title="Limpiar búsqueda">
+                    ✕
+                </button>
+            }
+        </div>
+
+        <div class="trb-filters-group">
+            <select aria-label="Filtrar por estado"
+                    class="trb-select"
+                    value="@filtroEstado"
+                    @onchange="OnEstadoFilterChanged">
+                <option value="">Todos los estados</option>
+                <option value="encurso">En curso</option>
+                <option value="finalizado">Finalizado</option>
+            </select>
+
+            <select aria-label="Filtrar por cliente"
+                    class="trb-select"
+                    value="@filtroClienteId"
+                    @onchange="OnClienteFilterChanged">
+                <option value="0">Todos los clientes</option>
+                @foreach (var c in listaClientes)
+                {
+                    <option value="@c.Id">@c.NombreCompleto</option>
+                }
+            </select>
+
+            <select aria-label="Filtrar por plano"
+                    class="trb-select"
+                    value="@filtroPlano"
+                    @onchange="OnPlanoFilterChanged">
+                <option value="">Todos (con/sin plano)</option>
+                <option value="con">Con plano</option>
+                <option value="sin">Sin plano</option>
+            </select>
+
+            <button type="button"
+                    class="trb-btn-icon"
+                    title="Limpiar filtros"
+                    disabled="@(!HayFiltrosActivos)"
+                    @onclick="LimpiarFiltros">
+                <span class="material-symbols-outlined" style="font-size: 19px;">filter_alt_off</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Tabla principal -->
+    <section class="trb-table-card">
+        @if (cargando)
+        {
+            <div class="p-5 text-center">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <div class="text-secondary small fw-medium">Cargando trabajos y planos...</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 trb-table">
+                    <thead class="trb-thead">
+                        <tr>
+                            <th scope="col">CÓDIGO / OBRA</th>
+                            <th scope="col">CLIENTE</th>
+                            <th scope="col">PRESUPUESTO</th>
+                            <th scope="col">FECHAS</th>
+                            <th scope="col">PLANO AUTOCAD</th>
+                            <th scope="col">ESTADO</th>
+                            <th scope="col" class="text-end">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (TrabajosFiltrados.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    @if (HayFiltrosActivos)
+                                    {
+                                        <div class="trb-empty-state">
+                                            <div class="trb-empty-icon">
+                                                <span class="material-symbols-outlined" style="font-size: 28px;">search_off</span>
+                                            </div>
+                                            <h6 class="fw-bold text-dark mb-1">Sin resultados</h6>
+                                            <p class="text-muted small mb-3">No se encontraron trabajos que coincidan con los filtros aplicados.</p>
+                                            <button type="button" class="trb-btn-secondary btn-sm" @onclick="LimpiarFiltros">
+                                                Limpiar filtros
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="trb-empty-state">
+                                            <div class="trb-empty-icon">
+                                                <span class="material-symbols-outlined" style="font-size: 28px;">architecture</span>
+                                            </div>
+                                            <h6 class="fw-bold text-dark mb-1">No hay trabajos registrados</h6>
+                                            <p class="text-muted small mb-3">Creá tu primer trabajo u obra para comenzar a gestionar planos y presupuestos.</p>
+                                            <button type="button" class="trb-btn-primary btn-sm" @onclick="AbrirModalNuevo">
+                                                + Nuevo Trabajo
+                                            </button>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var trabajo in TrabajosPaginados)
+                            {
+                                <tr class="trb-row" @key="trabajo.Id">
+                                    <!-- Código / Obra -->
+                                    <td>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <span class="trb-code-badge">#TRB-@trabajo.Id</span>
+                                            <div>
+                                                <div class="trb-obra-name">@trabajo.NombreObra</div>
+                                                @if (trabajo.ReservaId.HasValue)
+                                                {
+                                                    <div class="trb-obra-sub">Reserva #@trabajo.ReservaId</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <!-- Cliente -->
+                                    <td>
+                                        <div class="trb-cliente-name">@trabajo.NombreClienteCompleto</div>
+                                        @if (!string.IsNullOrWhiteSpace(trabajo.Cliente?.Telefono))
+                                        {
+                                            <div class="trb-cliente-sub">@trabajo.Cliente.Telefono</div>
+                                        }
+                                    </td>
+
+                                    <!-- Presupuesto -->
+                                    <td>
+                                        <span class="trb-monto">@FormatoMonedaHelper.FormatearMoneda(trabajo.Presupuesto)</span>
+                                    </td>
+
+                                    <!-- Fechas -->
+                                    <td>
+                                        <div class="trb-fecha-main">Inicio: @trabajo.FechaInicio.ToString("dd/MM/yyyy")</div>
+                                        <div class="trb-fecha-sub">
+                                            @(trabajo.EstaFinalizado
+                                                ? $"Fin: {trabajo.FechaFin:dd/MM/yyyy}"
+                                                : "En ejecución")
+                                        </div>
+                                    </td>
+
+                                    <!-- Plano AutoCAD -->
+                                    <td>
+                                        @if (trabajo.TienePlano)
+                                        {
+                                            <div class="trb-plano-chip">
+                                                <button type="button"
+                                                        class="trb-plano-trigger"
+                                                        title="Ver plano"
+                                                        @onclick="() => AbrirModalVerPlano(trabajo)">
+                                                    <span class="material-symbols-outlined trb-plano-icon">description</span>
+                                                    <div class="trb-plano-meta">
+                                                        <span class="trb-plano-name" title="@trabajo.NombreArchivoPlano">@trabajo.NombreArchivoPlano</span>
+                                                        <span class="trb-plano-ext">@trabajo.ExtensionPlano</span>
+                                                    </div>
+                                                </button>
+                                                <button type="button"
+                                                        class="trb-plano-action"
+                                                        title="Ver plano"
+                                                        @onclick="() => AbrirModalVerPlano(trabajo)">
+                                                    <span class="material-symbols-outlined" style="font-size: 17px;">visibility</span>
+                                                </button>
+                                                <a href="@($"api/trabajos/{trabajo.Id}/plano")"
+                                                   target="_blank"
+                                                   download
+                                                   class="trb-plano-action"
+                                                   title="Descargar plano">
+                                                    <span class="material-symbols-outlined" style="font-size: 17px;">download</span>
+                                                </a>
+                                                <button type="button"
+                                                        class="trb-plano-action"
+                                                        title="Reemplazar plano"
+                                                        @onclick="() => AbrirModalPlano(trabajo)">
+                                                    <span class="material-symbols-outlined" style="font-size: 17px;">sync</span>
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="trb-btn-subir-plano"
+                                                    @onclick="() => AbrirModalPlano(trabajo)">
+                                                <span class="material-symbols-outlined" style="font-size: 16px;">note_add</span>
+                                                <span>+ Subir Plano DWG</span>
+                                            </button>
+                                        }
+                                    </td>
+
+                                    <!-- Estado -->
+                                    <td>
+                                        @if (trabajo.EstaFinalizado)
+                                        {
+                                            <span class="trb-status-badge trb-status-finalizado">
+                                                <span class="material-symbols-outlined" style="font-size: 14px;">check</span>
+                                                <span>FINALIZADO</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="trb-status-badge trb-status-encurso">
+                                                <span class="trb-status-dot"></span>
+                                                <span>EN CURSO</span>
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <!-- Acciones -->
+                                    <td class="text-end">
+                                        <div class="trb-actions">
+                                            <button type="button"
+                                                    class="trb-action-btn"
+                                                    title="@(trabajo.EstaFinalizado ? "Reabrir trabajo" : "Marcar como finalizado")"
+                                                    disabled="@(procesandoId == trabajo.Id)"
+                                                    @onclick="() => CambiarEstadoTrabajo(trabajo)">
+                                                <span class="material-symbols-outlined" style="font-size: 18px;">
+                                                    @(trabajo.EstaFinalizado ? "replay" : "task_alt")
+                                                </span>
+                                            </button>
+                                            <button type="button"
+                                                    class="trb-action-btn"
+                                                    title="Editar trabajo"
+                                                    @onclick="() => AbrirModalEditar(trabajo)">
+                                                <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+                                            </button>
+                                            <button type="button"
+                                                    class="trb-action-btn trb-action-delete"
+                                                    title="Eliminar trabajo"
+                                                    @onclick="() => SolicitarEliminar(trabajo)">
+                                                <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginador -->
+            <div class="px-3 border-top">
+                <Paginador PaginaActual="@paginaActual"
+                           TotalPaginas="@TotalPaginas"
+                           TotalItems="@TrabajosFiltrados.Count"
+                           ItemsPorPagina="@ItemsPorPagina"
+                           MostrarNavUnaPagina="true"
+                           TextoInfo="@TextoPaginador"
+                           OnPaginaCambiada="OnPaginaCambiada" />
+            </div>
+        }
+    </section>
+
+<!-- Modal Nuevo / Editar Trabajo -->
+<NuevoTrabajoModal @bind-Visible="mostrarModalTrabajo"
+                   TrabajoEditar="@trabajoEnEdicion"
+                   Clientes="@listaClientes"
+                   OnTrabajoGuardado="OnOperacionExitosa" />
+
+<!-- Modal Subir / Reemplazar Plano -->
+<SubirPlanoModal @bind-Visible="mostrarModalPlano"
+                 Trabajo="@trabajoParaPlano"
+                 OnPlanoSubido="OnOperacionExitosa" />
+
+<!-- Modal Ver Plano -->
+<VerPlanoModal @bind-Visible="mostrarModalVerPlano"
+               Trabajo="@trabajoParaVer" />
+
+<!-- Modal Confirmar Eliminación -->
+@if (mostrarModalEliminar && trabajoAEliminar != null)
+{
+    <div class="trb-modal-backdrop" @onclick="CancelarEliminar"></div>
+    <div class="trb-modal-dialog trb-modal-dialog-sm" role="dialog" aria-modal="true" aria-labelledby="tituloEliminarTrabajo">
+        <div class="trb-modal-content">
+            <div class="trb-modal-header">
+                <div>
+                    <h5 class="trb-modal-title" id="tituloEliminarTrabajo">Eliminar trabajo</h5>
+                    <span class="trb-modal-subtitle">Esta acción no se puede deshacer.</span>
+                </div>
+                <button type="button" class="trb-modal-close" @onclick="CancelarEliminar" disabled="@eliminando">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="trb-modal-body">
+                <p class="mb-0 text-secondary">
+                    ¿Confirmás que querés eliminar la obra <strong class="text-dark">#TRB-@trabajoAEliminar.Id · @trabajoAEliminar.NombreObra</strong>?
+                    @if (trabajoAEliminar.TienePlano)
+                    {
+                        <span> También se eliminará el plano adjunto.</span>
+                    }
+                </p>
+            </div>
+            <div class="trb-modal-footer">
+                <button type="button" class="trb-btn-secondary" @onclick="CancelarEliminar" disabled="@eliminando">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-danger px-4 fw-semibold" @onclick="ConfirmarEliminar" disabled="@eliminando">
+                    @(eliminando ? "Eliminando..." : "Eliminar")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Toast -->
+<ToastSimple @bind-Visible="mostrarToast"
+             Titulo="@tituloToast"
+             Mensaje="@mensajeToast"
+             EsError="@esErrorToast" />
+</div>
+
+@code {
+    private const int ItemsPorPagina = 6;
+
+    private List<TrabajoItem> listaTrabajos = new();
+    private List<TrabajoClienteItem> listaClientes = new();
+    private bool cargando = true;
+    private string? errorCarga;
+    private bool sesionExpirada;
+
+    private string terminoBusqueda = string.Empty;
+    private string filtroEstado = string.Empty;
+    private int filtroClienteId;
+    private string filtroPlano = string.Empty;
+    private int paginaActual = 1;
+
+    private CancellationTokenSource? ctsBusqueda;
+
+    // Modales
+    private bool mostrarModalTrabajo;
+    private TrabajoItem? trabajoEnEdicion;
+
+    private bool mostrarModalPlano;
+    private TrabajoItem? trabajoParaPlano;
+
+    private bool mostrarModalVerPlano;
+    private TrabajoItem? trabajoParaVer;
+
+    private bool mostrarModalEliminar;
+    private TrabajoItem? trabajoAEliminar;
+    private bool eliminando;
+    private int? procesandoId;
+
+    // Toast
+    private bool mostrarToast;
+    private string tituloToast = string.Empty;
+    private string mensajeToast = string.Empty;
+    private bool esErrorToast;
+
+    private int ObrasEnCurso => listaTrabajos.Count(t => !t.EstaFinalizado);
+    private int TrabajosFinalizados => listaTrabajos.Count(t => t.EstaFinalizado);
+    private int PlanosCargados => listaTrabajos.Count(t => t.TienePlano);
+
+    private bool HayFiltrosActivos =>
+        !string.IsNullOrWhiteSpace(terminoBusqueda) ||
+        !string.IsNullOrWhiteSpace(filtroEstado) ||
+        filtroClienteId > 0 ||
+        !string.IsNullOrWhiteSpace(filtroPlano);
+
+    private List<TrabajoItem> TrabajosFiltrados
+    {
+        get
+        {
+            IEnumerable<TrabajoItem> query = listaTrabajos;
+
+            if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+            {
+                var q = FormatoMonedaHelper.RemoverTildes(terminoBusqueda.Trim()).ToLowerInvariant();
+                query = query.Where(t =>
+                    FormatoMonedaHelper.RemoverTildes(t.NombreObra).ToLowerInvariant().Contains(q) ||
+                    FormatoMonedaHelper.RemoverTildes(t.NombreClienteCompleto).ToLowerInvariant().Contains(q) ||
+                    $"#trb-{t.Id}".Contains(q) ||
+                    t.Id.ToString().Contains(q));
+            }
+
+            if (filtroEstado == "encurso")
+                query = query.Where(t => !t.EstaFinalizado);
+            else if (filtroEstado == "finalizado")
+                query = query.Where(t => t.EstaFinalizado);
+
+            if (filtroClienteId > 0)
+                query = query.Where(t => t.ClienteId == filtroClienteId);
+
+            if (filtroPlano == "con")
+                query = query.Where(t => t.TienePlano);
+            else if (filtroPlano == "sin")
+                query = query.Where(t => !t.TienePlano);
+
+            return query.ToList();
+        }
+    }
+
+    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(TrabajosFiltrados.Count / (double)ItemsPorPagina));
+
+    private List<TrabajoItem> TrabajosPaginados
+    {
+        get
+        {
+            var paginaValida = Math.Min(paginaActual, TotalPaginas);
+            return TrabajosFiltrados
+                .Skip((paginaValida - 1) * ItemsPorPagina)
+                .Take(ItemsPorPagina)
+                .ToList();
+        }
+    }
+
+    private string TextoPaginador
+    {
+        get
+        {
+            var total = TrabajosFiltrados.Count;
+            if (total == 0) return "Sin trabajos para mostrar";
+            var desde = ((Math.Min(paginaActual, TotalPaginas) - 1) * ItemsPorPagina) + 1;
+            var hasta = Math.Min(Math.Min(paginaActual, TotalPaginas) * ItemsPorPagina, total);
+            return $"Mostrando {desde} a {hasta} de {total} trabajos registrados";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos(mostrarSpinner: true);
+    }
+
+    private async Task CargarDatos(bool mostrarSpinner)
+    {
+        if (mostrarSpinner)
+            cargando = true;
+
+        errorCarga = null;
+        sesionExpirada = false;
+
+        try
+        {
+            var tTrabajos = Http.GetAsync<List<TrabajoItem>>("api/trabajos");
+            var tClientes = Http.GetAsync<List<TrabajoClienteItem>>("api/clientes/obtenerclientes");
+
+            await Task.WhenAll(tTrabajos, tClientes);
+
+            var respTrabajos = await tTrabajos;
+            var respClientes = await tClientes;
+
+            if (respTrabajos.Error)
+            {
+                sesionExpirada = respTrabajos.Response?.StatusCode == System.Net.HttpStatusCode.Unauthorized;
+                errorCarga = await HttpErrorHelper.ObtenerMensajeError(respTrabajos);
+                listaTrabajos = new();
+            }
+            else
+            {
+                listaTrabajos = respTrabajos.Dato ?? new();
+            }
+
+            if (!respClientes.Error && respClientes.Dato != null)
+            {
+                listaClientes = respClientes.Dato
+                    .OrderBy(c => c.Nombre)
+                    .ThenBy(c => c.Apellido)
+                    .ToList();
+            }
+
+            if (paginaActual > TotalPaginas)
+                paginaActual = TotalPaginas;
+        }
+        catch (Exception ex)
+        {
+            errorCarga = $"No se pudo conectar con el servidor: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task OnBusquedaInput(ChangeEventArgs e)
+    {
+        terminoBusqueda = e.Value?.ToString() ?? string.Empty;
+
+        ctsBusqueda?.Cancel();
+        ctsBusqueda?.Dispose();
+        ctsBusqueda = new CancellationTokenSource();
+        var token = ctsBusqueda.Token;
+
+        try
+        {
+            await Task.Delay(200, token);
+            paginaActual = 1;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private void LimpiarBusqueda()
+    {
+        terminoBusqueda = string.Empty;
+        paginaActual = 1;
+    }
+
+    private void OnEstadoFilterChanged(ChangeEventArgs e)
+    {
+        filtroEstado = e.Value?.ToString() ?? string.Empty;
+        paginaActual = 1;
+    }
+
+    private void OnClienteFilterChanged(ChangeEventArgs e)
+    {
+        int.TryParse(e.Value?.ToString(), out filtroClienteId);
+        paginaActual = 1;
+    }
+
+    private void OnPlanoFilterChanged(ChangeEventArgs e)
+    {
+        filtroPlano = e.Value?.ToString() ?? string.Empty;
+        paginaActual = 1;
+    }
+
+    private void LimpiarFiltros()
+    {
+        terminoBusqueda = string.Empty;
+        filtroEstado = string.Empty;
+        filtroClienteId = 0;
+        filtroPlano = string.Empty;
+        paginaActual = 1;
+    }
+
+    private void OnPaginaCambiada(int nuevaPagina)
+    {
+        paginaActual = nuevaPagina;
+    }
+
+    private void AbrirModalNuevo()
+    {
+        trabajoEnEdicion = null;
+        mostrarModalTrabajo = true;
+    }
+
+    private void AbrirModalEditar(TrabajoItem trabajo)
+    {
+        trabajoEnEdicion = trabajo;
+        mostrarModalTrabajo = true;
+    }
+
+    private void AbrirModalPlano(TrabajoItem trabajo)
+    {
+        trabajoParaPlano = trabajo;
+        mostrarModalPlano = true;
+    }
+
+    private void AbrirModalVerPlano(TrabajoItem trabajo)
+    {
+        trabajoParaVer = trabajo;
+        mostrarModalVerPlano = true;
+    }
+
+    private async Task CambiarEstadoTrabajo(TrabajoItem trabajo)
+    {
+        if (procesandoId.HasValue) return;
+        procesandoId = trabajo.Id;
+
+        try
+        {
+            var nuevoFinalizado = !trabajo.EstaFinalizado;
+            DateTime? nuevaFechaFin = nuevoFinalizado
+                ? (DateTime.Today < trabajo.FechaInicio.Date ? trabajo.FechaInicio.Date : DateTime.Today)
+                : null;
+
+            var dto = new TrabajoFormDTO
+            {
+                Id = trabajo.Id,
+                NombreObra = trabajo.NombreObra,
+                ClienteId = trabajo.ClienteId,
+                FechaInicio = trabajo.FechaInicio,
+                FechaFin = nuevaFechaFin,
+                Presupuesto = trabajo.Presupuesto,
+                Planos = trabajo.Planos,
+                ReservaId = trabajo.ReservaId
+            };
+
+            var resp = await Http.PutAsync<TrabajoFormDTO, TrabajoItem>($"api/trabajos/{trabajo.Id}", dto);
+            if (resp.Error)
+            {
+                MostrarToast("Error al actualizar estado", await HttpErrorHelper.ObtenerMensajeError(resp), esError: true);
+                return;
+            }
+
+            await CargarDatos(mostrarSpinner: false);
+            var msg = nuevoFinalizado
+                ? $"La obra \"{trabajo.NombreObra}\" fue marcada como finalizada."
+                : $"La obra \"{trabajo.NombreObra}\" volvió a estar en curso.";
+            MostrarToast("Estado actualizado", msg, esError: false);
+        }
+        finally
+        {
+            procesandoId = null;
+        }
+    }
+
+    private void SolicitarEliminar(TrabajoItem trabajo)
+    {
+        trabajoAEliminar = trabajo;
+        mostrarModalEliminar = true;
+    }
+
+    private void CancelarEliminar()
+    {
+        if (eliminando) return;
+        mostrarModalEliminar = false;
+        trabajoAEliminar = null;
+    }
+
+    private async Task ConfirmarEliminar()
+    {
+        if (trabajoAEliminar == null || eliminando) return;
+
+        eliminando = true;
+        try
+        {
+            var resp = await Http.DeleteAsync<object>($"api/trabajos/{trabajoAEliminar.Id}");
+            if (resp.Error)
+            {
+                MostrarToast("No se pudo eliminar", await HttpErrorHelper.ObtenerMensajeError(resp), esError: true);
+                return;
+            }
+
+            var nombre = trabajoAEliminar.NombreObra;
+            mostrarModalEliminar = false;
+            trabajoAEliminar = null;
+
+            await CargarDatos(mostrarSpinner: false);
+            MostrarToast("Trabajo eliminado", $"Se eliminó la obra \"{nombre}\".", esError: false);
+        }
+        finally
+        {
+            eliminando = false;
+        }
+    }
+
+    private async Task OnOperacionExitosa(string mensaje)
+    {
+        await CargarDatos(mostrarSpinner: false);
+        MostrarToast("¡Operación exitosa!", mensaje, esError: false);
+    }
+
+    private void MostrarToast(string titulo, string mensaje, bool esError)
+    {
+        tituloToast = titulo;
+        mensajeToast = mensaje;
+        esErrorToast = esError;
+        mostrarToast = true;
+    }
+
+    public void Dispose()
+    {
+        ctsBusqueda?.Cancel();
+        ctsBusqueda?.Dispose();
+    }
+}
