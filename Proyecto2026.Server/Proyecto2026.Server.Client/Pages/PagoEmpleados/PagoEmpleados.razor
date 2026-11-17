@@ -114,10 +114,8 @@
                         value="@filtroMedioPago"
                         @onchange="OnMedioFilterChanged">
                     <option value="">Todos los medios de pago</option>
-                    <option value="Transferencia Bancaria">Transferencia Bancaria</option>
                     <option value="Efectivo">Efectivo</option>
                     <option value="Mercado Pago">Mercado Pago</option>
-                    <option value="Cheque / Remesa">Cheque / Remesa</option>
                 </select>
 
                 <select id="trabajoFilter"
@@ -399,10 +397,8 @@
                                     value="@medioPago"
                                     @onchange="OnMedioPagoChanged"
                                     disabled="@enviandoPago">
-                                <option value="Transferencia Bancaria">Transferencia Bancaria</option>
                                 <option value="Efectivo">Efectivo</option>
                                 <option value="Mercado Pago">Mercado Pago</option>
-                                <option value="Cheque / Remesa">Cheque / Remesa</option>
                             </select>
                         </div>
                         <div class="col-12 col-sm-6 d-flex flex-column gap-1">
@@ -635,7 +631,7 @@
     private int trabajoSeleccionadoId = 0;
     private decimal montoLiquidar = 0m;
     private string montoInputString = "";
-    private string medioPago = "Transferencia Bancaria";
+    private string medioPago = "Efectivo";
     private DateTime fechaPago = DateTime.Today;
     private string fechaPagoString => fechaPago.ToString("yyyy-MM-dd");
     private string observaciones = "";
@@ -876,7 +872,7 @@
         trabajoSeleccionadoId = listaTrabajos.FirstOrDefault()?.Id ?? 0;
         montoLiquidar = primero.Salario > 0 ? primero.Salario : 0m;
         montoInputString = montoLiquidar > 0 ? montoLiquidar.ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "";
-        medioPago = "Transferencia Bancaria";
+        medioPago = "Efectivo";
         fechaPago = DateTime.Today;
         observaciones = "";
         errorModal = null;
@@ -955,7 +951,7 @@
 
     private void OnMedioPagoChanged(ChangeEventArgs e)
     {
-        medioPago = e.Value?.ToString() ?? "Transferencia Bancaria";
+        medioPago = e.Value?.ToString() ?? "Efectivo";
     }
 
     private void OnFechaPagoChanged(ChangeEventArgs e)
