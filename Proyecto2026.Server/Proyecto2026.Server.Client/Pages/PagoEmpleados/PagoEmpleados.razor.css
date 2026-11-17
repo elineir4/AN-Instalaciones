@@ -1384,3 +1384,71 @@
     padding: 1.1rem 1.25rem;
     gap: 0.75rem;
 }
+
+/* Adaptación móvil completa para Pago de Empleados */
+@media (max-width: 767.98px) {
+    .pe-header-actions {
+        width: 100%;
+    }
+
+    .pe2-btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .pe2-kpi-card {
+        padding: 1rem;
+    }
+
+    .pe2-kpi-value {
+        font-size: 1.3rem;
+    }
+
+    .pe2-toolbar {
+        padding: 0.85rem;
+    }
+
+    .pe2-search-wrap {
+        max-width: 100%;
+    }
+
+    .pe2-filters-wrap {
+        width: 100%;
+    }
+
+    .pe2-select {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .pe2-footer {
+        flex-direction: column;
+        text-align: center;
+        padding: 0.85rem;
+    }
+
+    .pe2-pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .pe-modal-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .pe-btn-cancel,
+    .pe-btn-confirm,
+    .pe2-btn-danger {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .pe-toast {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        min-width: 0;
+        max-width: none;
+    }
+}
