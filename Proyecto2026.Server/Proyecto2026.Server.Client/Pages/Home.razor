@@ -1,32 +1,289 @@
 ﻿@page "/"
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+@inject NavigationManager Nav
 
 <PageTitle>Inicio - AN Instalaciones</PageTitle>
 
-<div class="home-container">
-    <!-- Encabezado -->
-    <header class="home-header">
-        <h1 class="home-title">Hola, Antonio</h1>
-        <p class="home-subtitle">Resumen de AN Instalaciones - Sanitarias y Gas</p>
-    </header>
+<div class="home-container pb-5">
+    <!-- Tarjeta de Encabezado (mismo estilo que Pagos y Clientes) -->
+    <div class="card-custom header-card p-4 mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <div>
+                <div class="d-flex align-items-center gap-3 mb-1">
+                    <h1 class="header-title fs-3 fw-bold mb-0">Hola, Antonio</h1>
+                    <span class="badge badge-header-dinamico">Panel Principal</span>
+                </div>
+                <p class="header-subtitle text-muted mb-0">
+                    Resumen de AN Instalaciones - Sanitarias y Gas.
+                </p>
+            </div>
+            <div>
+                <button class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
+                        @onclick="CargarResumenAsync"
+                        disabled="@cargando"
+                        title="Actualizar resumen">
+                    <span class="material-symbols-outlined refresh-icon @(cargando ? "spinner-rotate" : "")">refresh</span>
+                    <span>Actualizar</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Accesos rápidos -->
-    <section class="home-quick-grid" aria-label="Accesos rápidos">
-        <a class="quick-card" href="/clientes">
-            <span class="quick-card-icon" aria-hidden="true"><span class="bi bi-people-fill"></span></span>
-            <span class="quick-card-title">Clientes</span>
-            <span class="quick-card-desc">Gestioná los datos de tus clientes</span>
-        </a>
+    <!-- Fila de 3 Tarjetas de Resumen (mismo estilo ResumenCard) -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="resumen-card h-100 d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="resumen-titulo text-uppercase mb-1">Saldos por cobrar</div>
+                    <div class="resumen-valor valor-debt mb-1">
+                        @(cargando ? "..." : FormatoMonedaHelper.FormatearMoneda(totalSaldosPorCobrar))
+                    </div>
+                    <div class="resumen-subtitulo">
+                        @clientesConDeuda.Count @(clientesConDeuda.Count == 1 ? "cliente con deuda" : "clientes con deuda")
+                    </div>
+                </div>
+                <div class="resumen-icono-container icono-bg-danger">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                </div>
+            </div>
+        </div>
 
-        <a class="quick-card" href="/empleados">
-            <span class="quick-card-icon" aria-hidden="true"><span class="bi bi-person-badge-fill"></span></span>
-            <span class="quick-card-title">Empleados</span>
-            <span class="quick-card-desc">Administrá el personal de obra</span>
-        </a>
+        <div class="col-12 col-md-4">
+            <div class="resumen-card h-100 d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="resumen-titulo text-uppercase mb-1">Cobrado esta semana</div>
+                    <div class="resumen-valor mb-1">@(cargando ? "..." : FormatoMonedaHelper.FormatearMoneda(cobradoSemanaTotal))</div>
+                    <div class="resumen-subtitulo">
+                        @cobradoSemanaCantidad @(cobradoSemanaCantidad == 1 ? "pago registrado" : "pagos registrados")
+                    </div>
+                </div>
+                <div class="resumen-icono-container icono-bg-success">
+                    <span class="material-symbols-outlined">payments</span>
+                </div>
+            </div>
+        </div>
 
-        <a class="quick-card" href="/pagos">
-            <span class="quick-card-icon" aria-hidden="true"><span class="bi bi-wallet2"></span></span>
-            <span class="quick-card-title">Pagos</span>
-            <span class="quick-card-desc">Controlá saldos y registrá pagos</span>
-        </a>
-    </section>
+        <div class="col-12 col-md-4">
+            <div class="resumen-card h-100 d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="resumen-titulo text-uppercase mb-1">Obras en curso</div>
+                    <div class="resumen-valor mb-1">@(cargando ? "..." : obrasEnCursoCount.ToString())</div>
+                    <div class="resumen-subtitulo">
+                        @(obrasEnCursoCount == 1 ? "1 obra activa" : $"{obrasEnCursoCount} obras activas")
+                    </div>
+                </div>
+                <div class="resumen-icono-container icono-bg-primary">
+                    <span class="material-symbols-outlined">engineering</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dos Bloques Lado a Lado -->
+    <div class="row g-4">
+        <!-- a) Clientes con saldo pendiente -->
+        <div class="col-12 col-lg-7">
+            <div class="card-custom h-100 d-flex flex-column overflow-hidden">
+                <div class="panel-header px-4 py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="material-symbols-outlined header-icon-debt">request_quote</span>
+                        <h2 class="panel-title fs-6 fw-bold mb-0">Clientes con saldo pendiente</h2>
+                    </div>
+                    <span class="badge badge-header-dinamico">@clientesConDeuda.Count pendientes</span>
+                </div>
+
+                <div class="panel-body px-4 py-2 flex-grow-1">
+                    @if (cargando)
+                    {
+                        <div class="empty-state">Cargando saldos pendientes...</div>
+                    }
+                    else if (clientesConDeuda.Count == 0)
+                    {
+                        <div class="empty-state">No hay clientes con saldo pendiente.</div>
+                    }
+                    else
+                    {
+                        <ul class="client-debt-list">
+                            @foreach (var cliente in clientesConDeuda.Take(5))
+                            {
+                                <li class="client-debt-item" @onclick="IrAPagos">
+                                    <div class="client-info-group">
+                                        <div class="client-avatar">@ObtenerIniciales(cliente.NombreCompleto)</div>
+                                        <div>
+                                            <span class="client-name">@cliente.NombreCompleto</span>
+                                            <span class="client-sub">Saldo pendiente</span>
+                                        </div>
+                                    </div>
+                                    <div class="client-debt-action">
+                                        <span class="debt-badge-val">@FormatoMonedaHelper.FormatearMoneda(cliente.SaldoPendiente)</span>
+                                        <span class="material-symbols-outlined arrow-icon">arrow_forward</span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+
+                <div class="panel-footer px-4 py-3 text-center">
+                    <a href="/pagos" class="link-all">
+                        <span>Ir a Saldos Pendientes</span>
+                        <span class="material-symbols-outlined link-arrow">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- b) Próximos turnos -->
+        <div class="col-12 col-lg-5">
+            <div class="card-custom h-100 d-flex flex-column overflow-hidden">
+                <div class="panel-header px-4 py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="material-symbols-outlined header-icon-info">calendar_month</span>
+                        <h2 class="panel-title fs-6 fw-bold mb-0">Próximos turnos</h2>
+                    </div>
+                    <span class="badge badge-header-dinamico">@turnosPreview.Count agendados</span>
+                </div>
+
+                <div class="panel-body px-4 py-3 flex-grow-1">
+                    <div class="turn-list">
+                        @foreach (var turno in turnosPreview)
+                        {
+                            <div class="turn-card-item">
+                                <div class="turn-top">
+                                    <span class="turn-datetime">
+                                        <span class="material-symbols-outlined">schedule</span>
+                                        <span>@turno.FechaHora</span>
+                                    </span>
+                                    <span class="status-badge @(turno.Confirmado ? "status-confirmed" : "status-pending")">
+                                        @(turno.Confirmado ? "Confirmado" : "Pendiente")
+                                    </span>
+                                </div>
+                                <div class="turn-client">@turno.Cliente</div>
+                                <div class="turn-desc">
+                                    <span class="material-symbols-outlined">@turno.Icono</span>
+                                    <span>@turno.Descripcion</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="panel-footer px-4 py-3 text-center">
+                    <a href="/reservas" class="link-all">
+                        <span>Ver agenda completa</span>
+                        <span class="material-symbols-outlined link-arrow">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@code {
+    private bool cargando = true;
+    private List<ClienteSaldoItem> clientesConDeuda = new();
+    private decimal totalSaldosPorCobrar = 0m;
+    private decimal cobradoSemanaTotal = 0m;
+    private int cobradoSemanaCantidad = 0;
+    private int obrasEnCursoCount = 0;
+
+    private readonly List<TurnoPreviewItem> turnosPreview =
+    [
+        new("Hoy • 10:30 hs", true, "Edificio Los Robles", "Instalación de calefón y prueba de gas", "local_fire_department"),
+        new("Hoy • 15:00 hs", true, "Residencia Ing. Valenzuela", "Revisión de conexión de gas en cocina", "water_drop"),
+        new("Mañana • 08:30 hs", false, "Complejo San Martín", "Instalación sanitaria y termofusión", "build"),
+        new("Jueves • 11:00 hs", false, "Oficinas Torre Belgrano", "Control de estanqueidad de cañería", "speed")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!OperatingSystem.IsBrowser()) return;
+        await CargarResumenAsync();
+    }
+
+    private async Task CargarResumenAsync()
+    {
+        cargando = true;
+        try
+        {
+            var respSaldos = await Http.GetAsync<List<ClienteSaldoItem>>("api/pagos/saldospendientes");
+            if (!respSaldos.Error && respSaldos.Dato != null)
+            {
+                clientesConDeuda = respSaldos.Dato
+                    .Where(c => c.SaldoPendiente > 0)
+                    .OrderByDescending(c => c.SaldoPendiente)
+                    .ToList();
+                totalSaldosPorCobrar = clientesConDeuda.Sum(c => c.SaldoPendiente);
+            }
+        }
+        catch
+        {
+            clientesConDeuda = new();
+            totalSaldosPorCobrar = 0m;
+        }
+
+        try
+        {
+            var respCobrados = await Http.GetAsync<CobradoSemanaResumen>("api/pagos/cobrados-semana");
+            if (!respCobrados.Error && respCobrados.Dato != null)
+            {
+                cobradoSemanaTotal = respCobrados.Dato.Total;
+                cobradoSemanaCantidad = respCobrados.Dato.Cantidad;
+            }
+        }
+        catch
+        {
+            cobradoSemanaTotal = 0m;
+            cobradoSemanaCantidad = 0;
+        }
+
+        try
+        {
+            var respTrabajos = await Http.GetAsync<List<TrabajoResumenItem>>("api/trabajos");
+            if (!respTrabajos.Error && respTrabajos.Dato != null)
+            {
+                obrasEnCursoCount = respTrabajos.Dato.Count(t => !t.Finalizado);
+            }
+        }
+        catch
+        {
+            obrasEnCursoCount = 0;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void IrAPagos() => Nav.NavigateTo("/pagos");
+
+    private static string ObtenerIniciales(string nombreCompleto)
+    {
+        if (string.IsNullOrWhiteSpace(nombreCompleto)) return "CL";
+        var partes = nombreCompleto.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (partes.Length == 1) return partes[0][0].ToString().ToUpperInvariant();
+        return $"{char.ToUpperInvariant(partes[0][0])}{char.ToUpperInvariant(partes[1][0])}";
+    }
+
+    private sealed class CobradoSemanaResumen
+    {
+        public decimal Total { get; set; }
+        public int Cantidad { get; set; }
+    }
+
+    private sealed class TrabajoResumenItem
+    {
+        public int Id { get; set; }
+        public bool Finalizado { get; set; }
+    }
+
+    private sealed record TurnoPreviewItem(
+        string FechaHora,
+        bool Confirmado,
+        string Cliente,
+        string Descripcion,
+        string Icono);
+}

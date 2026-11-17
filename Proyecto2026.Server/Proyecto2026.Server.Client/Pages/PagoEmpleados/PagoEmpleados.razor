@@ -1,5 +1,4 @@
 @page "/pago-empleados"
-@rendermode InteractiveAuto
 @using Proyecto2026.Server.Client.Helpers
 @using Proyecto2026.Server.Client.Models
 @using Proyecto2026.Shared.DTO
@@ -670,6 +669,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!OperatingSystem.IsBrowser()) return;
         await CargarDatos(mostrarSpinner: true);
     }
 

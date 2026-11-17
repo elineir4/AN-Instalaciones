@@ -1,5 +1,4 @@
 @page "/empleados"
-@rendermode InteractiveAuto
 @using Proyecto2026.Server.Client.Helpers
 @using Proyecto2026.Server.Client.Models
 @using Proyecto2026.Server.Client.Pages.Empleados.Components
@@ -376,6 +375,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!OperatingSystem.IsBrowser()) return;
         await CargarEmpleados(mostrarSpinner: true);
     }
 
