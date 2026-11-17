@@ -16,6 +16,13 @@ public class TrabajoRepositorio : Repositorio<Trabajo>, ITrabajoRepositorio
         this.context = context;
     }
 
+    public async Task<int> CrearAsync(Trabajo trabajo)
+    {
+        await context.Set<Trabajo>().AddAsync(trabajo);
+        await context.SaveChangesAsync();
+        return trabajo.Id;   // EF completa el Id después de guardar
+    }
+
     // Trae todas las obras/trabajos incluyendo el Cliente y la Reserva
     public async Task<List<Trabajo>> ObtenerTodosConRelacionesAsync()
     {
@@ -55,5 +62,11 @@ public class TrabajoRepositorio : Repositorio<Trabajo>, ITrabajoRepositorio
             .Where(t => t.FechaFin != null)
             .OrderByDescending(t => t.FechaFin)
             .ToListAsync();
+    }
+
+    public async Task<Trabajo?> ObtenerPorIdAsync(int id)
+    {
+        return await context.Set<Trabajo>()
+            .FirstOrDefaultAsync(t => t.Id == id);
     }
 }
