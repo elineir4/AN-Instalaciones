@@ -1,0 +1,596 @@
+@page "/materiales"
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Pages.Materiales.Components
+@using Proyecto2026.Server.Client.Pages.Pagos.Components
+@using Proyecto2026.Servicios.ServicioHTTP
+@inject IHttpService Http
+@implements IDisposable
+
+<PageTitle>Materiales - AN Instalaciones</PageTitle>
+
+<div class="mat-page">
+    <!-- Encabezado -->
+    <div class="mat-header">
+        <div>
+            <h1 class="mat-title">Materiales y Stock de Obra</h1>
+            <p class="mat-subtitle">
+                Registro y control de materiales asignados a trabajos y clientes - AN Instalaciones
+            </p>
+        </div>
+
+        <div class="mat-header-actions">
+            <button type="button"
+                    class="mat-btn-secondary"
+                    disabled="@(cargando || listaTrabajos.Count == 0)"
+                    @onclick="AlternarPanelFiltroTrabajo">
+                <span class="material-symbols-outlined" style="font-size: 18px;">filter_alt</span>
+                <span>Filtrar por Trabajo</span>
+            </button>
+            <button type="button"
+                    class="mat-btn-primary"
+                    disabled="@(cargando || listaTrabajos.Count == 0)"
+                    @onclick="AbrirModalNuevo">
+                <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                <span>+ Cargar Material</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 3 Tarjetas KPI -->
+    <section class="mat-kpi-grid">
+        <div class="mat-kpi-card">
+            <div>
+                <span class="mat-kpi-label">TOTAL MATERIALES REGISTRADOS</span>
+                <div class="mat-kpi-value-row">
+                    <span class="mat-kpi-value">@(cargando ? "..." : listaMateriales.Count.ToString())</span>
+                    <span class="mat-kpi-unit">ítems activos</span>
+                </div>
+            </div>
+            <div class="mat-kpi-icon mat-kpi-icon-blue">
+                <span class="material-symbols-outlined">inventory_2</span>
+            </div>
+        </div>
+
+        <div class="mat-kpi-card">
+            <div>
+                <span class="mat-kpi-label">GASTO TOTAL EN MATERIALES</span>
+                <div class="mat-kpi-value-row">
+                    <span class="mat-kpi-value">@(cargando ? "..." : FormatoMonedaHelper.FormatearMoneda(GastoTotal))</span>
+                </div>
+            </div>
+            <div class="mat-kpi-icon mat-kpi-icon-emerald">
+                <span class="material-symbols-outlined">monetization_on</span>
+            </div>
+        </div>
+
+        <div class="mat-kpi-card">
+            <div>
+                <span class="mat-kpi-label">ÚLTIMOS MOVIMIENTOS</span>
+                <div class="mat-kpi-value-row">
+                    <span class="mat-kpi-value">@(cargando ? "..." : MovimientosSemana.ToString())</span>
+                    <span class="mat-kpi-unit">registrados esta semana</span>
+                </div>
+            </div>
+            <div class="mat-kpi-icon mat-kpi-icon-amber">
+                <span class="material-symbols-outlined">schedule</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Error de carga -->
+    @if (!cargando && !string.IsNullOrWhiteSpace(errorCarga))
+    {
+        <div class="mat-error-card">
+            <span class="material-symbols-outlined text-danger" style="font-size: 32px;">warning</span>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold text-danger mb-1">Error al consultar los materiales</h6>
+                <p class="text-muted small mb-2">@errorCarga</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger btn-sm" @onclick="() => CargarDatos(mostrarSpinner: true)">
+                        Reintentar
+                    </button>
+                    @if (sesionExpirada)
+                    {
+                        <a href="/login" class="btn btn-outline-danger btn-sm">
+                            Ir a Iniciar Sesión
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Tabla y Filtros -->
+    <section class="mat-table-card">
+        <div class="mat-toolbar">
+            <div class="mat-search-wrap">
+                <span class="material-symbols-outlined mat-search-icon">search</span>
+                <input type="text"
+                       class="mat-search-input"
+                       placeholder="Buscar por material, código u obra..."
+                       aria-label="Buscar por material, código u obra"
+                       value="@terminoBusqueda"
+                       @oninput="OnBusquedaInput" />
+                @if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+                {
+                    <button type="button" class="mat-clear-search" @onclick="LimpiarBusqueda" title="Limpiar búsqueda">
+                        ✕
+                    </button>
+                }
+            </div>
+
+            <div class="mat-filters-wrap">
+                <span class="mat-filter-label">Ver:</span>
+                <select @ref="selectTrabajoRef"
+                        aria-label="Filtrar por trabajo"
+                        class="mat-select"
+                        value="@filtroTrabajoId"
+                        @onchange="OnTrabajoFilterChanged">
+                    <option value="0">Todos los trabajos</option>
+                    @foreach (var t in listaTrabajos)
+                    {
+                        <option value="@t.Id">#TRB-@t.Id · @t.NombreObra</option>
+                    }
+                </select>
+                @if (HayFiltrosActivos)
+                {
+                    <button type="button" class="mat-btn-icon" title="Limpiar filtros" @onclick="LimpiarFiltros">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">filter_alt_off</span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        @if (cargando)
+        {
+            <div class="p-5 text-center">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <div class="text-secondary small fw-medium">Cargando materiales...</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 mat-table">
+                    <thead class="mat-thead">
+                        <tr>
+                            <th scope="col">MATERIAL</th>
+                            <th scope="col" class="text-center">CANTIDAD</th>
+                            <th scope="col" class="text-end">PRECIO UNIT.</th>
+                            <th scope="col" class="text-end">TOTAL</th>
+                            <th scope="col">TRABAJO / OBRA</th>
+                            <th scope="col">CLIENTE</th>
+                            <th scope="col">FECHA USO</th>
+                            <th scope="col" class="text-end">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (MaterialesFiltrados.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    @if (HayFiltrosActivos)
+                                    {
+                                        <div class="mat-empty-state">
+                                            <div class="mat-empty-icon">
+                                                <span class="material-symbols-outlined" style="font-size: 28px;">search_off</span>
+                                            </div>
+                                            <h6 class="fw-bold text-dark mb-1">Sin resultados</h6>
+                                            <p class="text-muted small mb-3">No se encontraron materiales con los filtros aplicados.</p>
+                                            <button type="button" class="mat-btn-secondary btn-sm" @onclick="LimpiarFiltros">
+                                                Limpiar filtros
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="mat-empty-state">
+                                            <div class="mat-empty-icon">
+                                                <span class="material-symbols-outlined" style="font-size: 28px;">inventory_2</span>
+                                            </div>
+                                            <h6 class="fw-bold text-dark mb-1">No hay materiales registrados</h6>
+                                            <p class="text-muted small mb-3">Cargá el primer material asignado a una obra.</p>
+                                            <button type="button"
+                                                    class="mat-btn-primary btn-sm"
+                                                    disabled="@(listaTrabajos.Count == 0)"
+                                                    @onclick="AbrirModalNuevo">
+                                                + Cargar Material
+                                            </button>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in MaterialesPaginados)
+                            {
+                                <tr class="mat-row" @key="item.Id">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="mat-dot @(EsDotAmber(item) ? "mat-dot-amber" : "mat-dot-blue")"></span>
+                                            <span class="mat-nombre">@item.NombreMaterial</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="mat-qty-pill">@item.CantidadFormateada</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="mat-precio-unit">@FormatoMonedaHelper.FormatearMoneda(item.PrecioUnitario)</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="mat-total-val">@FormatoMonedaHelper.FormatearMoneda(item.TotalCalculado)</span>
+                                    </td>
+                                    <td>
+                                        <span class="mat-obra-pill @(item.Trabajo?.EstaFinalizado == true ? "mat-obra-emerald" : "mat-obra-blue")">
+                                            #TRB-@item.TrabajoId @item.NombreObra
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="mat-cliente">@item.NombreCliente</span>
+                                    </td>
+                                    <td>
+                                        <span class="mat-fecha">@item.FechaUso.ToString("dd/MM/yyyy")</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="mat-actions">
+                                            <button type="button"
+                                                    class="mat-action-btn"
+                                                    title="Editar material"
+                                                    @onclick="() => AbrirModalEditar(item)">
+                                                <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+                                            </button>
+                                            <button type="button"
+                                                    class="mat-action-btn mat-action-delete"
+                                                    title="Eliminar material"
+                                                    @onclick="() => SolicitarEliminar(item)">
+                                                <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-3 border-top">
+                <Paginador PaginaActual="@paginaActual"
+                           TotalPaginas="@TotalPaginas"
+                           TotalItems="@MaterialesFiltrados.Count"
+                           ItemsPorPagina="@ItemsPorPagina"
+                           MostrarNavUnaPagina="true"
+                           TextoInfo="@TextoPaginador"
+                           OnPaginaCambiada="OnPaginaCambiada" />
+            </div>
+        }
+    </section>
+
+    <!-- Modal Cargar / Editar Material -->
+    <NuevoMaterialModal @bind-Visible="mostrarModalMaterial"
+                        MaterialEditar="@materialEnEdicion"
+                        Trabajos="@listaTrabajos"
+                        OnMaterialGuardado="OnOperacionExitosa" />
+
+    <!-- Modal Confirmar Eliminación -->
+    @if (mostrarModalEliminar && materialAEliminar != null)
+    {
+        <div class="mat-modal-backdrop" @onclick="CancelarEliminar"></div>
+        <div class="mat-modal-dialog mat-modal-dialog-sm" role="dialog" aria-modal="true" aria-labelledby="tituloEliminarMaterial">
+            <div class="mat-modal-content">
+                <div class="mat-modal-header">
+                    <div>
+                        <h5 class="mat-modal-title" id="tituloEliminarMaterial">Eliminar material</h5>
+                        <span class="mat-modal-subtitle">Esta acción no se puede deshacer.</span>
+                    </div>
+                    <button type="button" class="mat-modal-close" @onclick="CancelarEliminar" disabled="@eliminando">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="mat-modal-body">
+                    <p class="mb-0 text-secondary">
+                        ¿Confirmás que querés eliminar <strong class="text-dark">@materialAEliminar.NombreMaterial</strong>
+                        de la obra <strong class="text-dark">#TRB-@materialAEliminar.TrabajoId @materialAEliminar.NombreObra</strong>?
+                    </p>
+                </div>
+                <div class="mat-modal-footer">
+                    <button type="button" class="mat-btn-secondary" @onclick="CancelarEliminar" disabled="@eliminando">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger px-4 fw-semibold" @onclick="ConfirmarEliminar" disabled="@eliminando">
+                        @(eliminando ? "Eliminando..." : "Eliminar")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Toast -->
+    <ToastSimple @bind-Visible="mostrarToast"
+                 Titulo="@tituloToast"
+                 Mensaje="@mensajeToast"
+                 EsError="@esErrorToast" />
+</div>
+
+@code {
+    private const int ItemsPorPagina = 6;
+
+    private List<MaterialItem> listaMateriales = new();
+    private List<TrabajoItem> listaTrabajos = new();
+    private bool cargando = true;
+    private string? errorCarga;
+    private bool sesionExpirada;
+
+    private string terminoBusqueda = string.Empty;
+    private int filtroTrabajoId;
+    private int paginaActual = 1;
+    private ElementReference selectTrabajoRef;
+
+    private CancellationTokenSource? ctsBusqueda;
+
+    private bool mostrarModalMaterial;
+    private MaterialItem? materialEnEdicion;
+
+    private bool mostrarModalEliminar;
+    private MaterialItem? materialAEliminar;
+    private bool eliminando;
+
+    private bool mostrarToast;
+    private string tituloToast = string.Empty;
+    private string mensajeToast = string.Empty;
+    private bool esErrorToast;
+
+    private decimal GastoTotal => listaMateriales.Sum(m => m.TotalCalculado);
+
+    private int MovimientosSemana
+    {
+        get
+        {
+            var hace7Dias = DateTime.Today.AddDays(-7);
+            return listaMateriales.Count(m => m.FechaUso.Date >= hace7Dias);
+        }
+    }
+
+    private bool HayFiltrosActivos =>
+        !string.IsNullOrWhiteSpace(terminoBusqueda) || filtroTrabajoId > 0;
+
+    private List<MaterialItem> MaterialesFiltrados
+    {
+        get
+        {
+            IEnumerable<MaterialItem> query = listaMateriales;
+
+            if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+            {
+                var q = FormatoMonedaHelper.RemoverTildes(terminoBusqueda.Trim()).ToLowerInvariant();
+                query = query.Where(m =>
+                    FormatoMonedaHelper.RemoverTildes(m.NombreMaterial).ToLowerInvariant().Contains(q) ||
+                    FormatoMonedaHelper.RemoverTildes(m.NombreObra).ToLowerInvariant().Contains(q) ||
+                    FormatoMonedaHelper.RemoverTildes(m.NombreCliente).ToLowerInvariant().Contains(q) ||
+                    $"#trb-{m.TrabajoId}".Contains(q));
+            }
+
+            if (filtroTrabajoId > 0)
+            {
+                query = query.Where(m => m.TrabajoId == filtroTrabajoId);
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(MaterialesFiltrados.Count / (double)ItemsPorPagina));
+
+    private List<MaterialItem> MaterialesPaginados
+    {
+        get
+        {
+            var paginaValida = Math.Min(paginaActual, TotalPaginas);
+            return MaterialesFiltrados
+                .Skip((paginaValida - 1) * ItemsPorPagina)
+                .Take(ItemsPorPagina)
+                .ToList();
+        }
+    }
+
+    private string TextoPaginador
+    {
+        get
+        {
+            var total = MaterialesFiltrados.Count;
+            if (total == 0) return "Sin materiales para mostrar";
+            var desde = ((Math.Min(paginaActual, TotalPaginas) - 1) * ItemsPorPagina) + 1;
+            var hasta = Math.Min(Math.Min(paginaActual, TotalPaginas) * ItemsPorPagina, total);
+            return $"Mostrando {desde} a {hasta} de {total} materiales registrados";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos(mostrarSpinner: true);
+    }
+
+    private async Task CargarDatos(bool mostrarSpinner)
+    {
+        if (mostrarSpinner)
+            cargando = true;
+
+        errorCarga = null;
+        sesionExpirada = false;
+
+        try
+        {
+            var tMateriales = Http.GetAsync<List<MaterialItem>>("api/materiales");
+            var tTrabajos = Http.GetAsync<List<TrabajoItem>>("api/trabajos");
+
+            await Task.WhenAll(tMateriales, tTrabajos);
+
+            var respMat = await tMateriales;
+            var respTrab = await tTrabajos;
+
+            if (respMat.Error)
+            {
+                sesionExpirada = respMat.Response?.StatusCode == System.Net.HttpStatusCode.Unauthorized;
+                errorCarga = await HttpErrorHelper.ObtenerMensajeError(respMat);
+                listaMateriales = new();
+            }
+            else
+            {
+                listaMateriales = respMat.Dato ?? new();
+            }
+
+            if (!respTrab.Error && respTrab.Dato != null)
+            {
+                listaTrabajos = respTrab.Dato.OrderByDescending(t => t.Id).ToList();
+            }
+
+            if (paginaActual > TotalPaginas)
+                paginaActual = TotalPaginas;
+        }
+        catch (Exception ex)
+        {
+            errorCarga = $"No se pudo conectar con el servidor: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task OnBusquedaInput(ChangeEventArgs e)
+    {
+        terminoBusqueda = e.Value?.ToString() ?? string.Empty;
+
+        ctsBusqueda?.Cancel();
+        ctsBusqueda?.Dispose();
+        ctsBusqueda = new CancellationTokenSource();
+        var token = ctsBusqueda.Token;
+
+        try
+        {
+            await Task.Delay(200, token);
+            paginaActual = 1;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private void LimpiarBusqueda()
+    {
+        terminoBusqueda = string.Empty;
+        paginaActual = 1;
+    }
+
+    private void OnTrabajoFilterChanged(ChangeEventArgs e)
+    {
+        int.TryParse(e.Value?.ToString(), out filtroTrabajoId);
+        paginaActual = 1;
+    }
+
+    private async Task AlternarPanelFiltroTrabajo()
+    {
+        if (filtroTrabajoId > 0)
+        {
+            filtroTrabajoId = 0;
+            paginaActual = 1;
+        }
+        else
+        {
+            try { await selectTrabajoRef.FocusAsync(); } catch { }
+        }
+    }
+
+    private void LimpiarFiltros()
+    {
+        terminoBusqueda = string.Empty;
+        filtroTrabajoId = 0;
+        paginaActual = 1;
+    }
+
+    private void OnPaginaCambiada(int nuevaPagina)
+    {
+        paginaActual = nuevaPagina;
+    }
+
+    private void AbrirModalNuevo()
+    {
+        materialEnEdicion = null;
+        mostrarModalMaterial = true;
+    }
+
+    private void AbrirModalEditar(MaterialItem item)
+    {
+        materialEnEdicion = item;
+        mostrarModalMaterial = true;
+    }
+
+    private void SolicitarEliminar(MaterialItem item)
+    {
+        materialAEliminar = item;
+        mostrarModalEliminar = true;
+    }
+
+    private void CancelarEliminar()
+    {
+        if (eliminando) return;
+        mostrarModalEliminar = false;
+        materialAEliminar = null;
+    }
+
+    private async Task ConfirmarEliminar()
+    {
+        if (materialAEliminar == null || eliminando) return;
+
+        eliminando = true;
+        try
+        {
+            var resp = await Http.DeleteAsync<object>($"api/materiales/{materialAEliminar.Id}");
+            if (resp.Error)
+            {
+                MostrarToast("No se pudo eliminar", await HttpErrorHelper.ObtenerMensajeError(resp), esError: true);
+                return;
+            }
+
+            var nombre = materialAEliminar.NombreMaterial;
+            mostrarModalEliminar = false;
+            materialAEliminar = null;
+
+            await CargarDatos(mostrarSpinner: false);
+            MostrarToast("Material eliminado", $"Se eliminó \"{nombre}\".", esError: false);
+        }
+        finally
+        {
+            eliminando = false;
+        }
+    }
+
+    private async Task OnOperacionExitosa(string mensaje)
+    {
+        await CargarDatos(mostrarSpinner: false);
+        MostrarToast("¡Operación exitosa!", mensaje, esError: false);
+    }
+
+    private void MostrarToast(string titulo, string mensaje, bool esError)
+    {
+        tituloToast = titulo;
+        mensajeToast = mensaje;
+        esErrorToast = esError;
+        mostrarToast = true;
+    }
+
+    private static bool EsDotAmber(MaterialItem item)
+    {
+        var n = item.NombreMaterial.ToLowerInvariant();
+        return n.Contains("gas") || n.Contains("epoxi") || n.Contains("calef") || n.Contains("válvula") || n.Contains("valvula");
+    }
+
+    public void Dispose()
+    {
+        ctsBusqueda?.Cancel();
+        ctsBusqueda?.Dispose();
+    }
+}
