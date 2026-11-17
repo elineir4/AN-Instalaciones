@@ -9,49 +9,463 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Iniciar sesión - AN Instalaciones</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <title>AN Instalaciones - Acceso al Sistema</title>
+    <link rel="icon" type="image/png" href="~/favicon.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
     <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            background-color: #f4f6f9;
+            font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8f9ff;
+            color: #0b1c30;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overscroll-behavior: none;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .login-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 64rem;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
+        .glow-top {
+            position: absolute;
+            top: -6rem;
+            left: -5rem;
+            width: 20rem;
+            height: 20rem;
+            background: rgba(219, 225, 255, 0.35);
+            border-radius: 9999px;
+            filter: blur(64px);
+            pointer-events: none;
+        }
+
+        .glow-bottom {
+            position: absolute;
+            bottom: -6rem;
+            right: -4rem;
+            width: 22rem;
+            height: 22rem;
+            background: rgba(220, 233, 255, 0.6);
+            border-radius: 9999px;
+            filter: blur(64px);
+            pointer-events: none;
+        }
+
         .login-card {
+            position: relative;
             width: 100%;
-            max-width: 400px;
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 22, 45, 0.1), 0 8px 10px -6px rgba(0, 22, 45, 0.08);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        /* Left Panel */
+        .brand-panel {
+            background-color: #00162d;
+            color: #ffffff;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-logo-box {
+            height: 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .brand-logo-img {
+            height: 100%;
+            width: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        .brand-title {
+            margin: 0;
+            font-size: 24px;
+            line-height: 32px;
+            letter-spacing: -0.015em;
+            font-weight: 700;
+            color: #f8f9ff;
+            text-transform: uppercase;
+        }
+
+        .brand-subtitle {
+            margin: 0.25rem 0 0;
+            font-size: 11px;
+            line-height: 14px;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+            color: #afc8ed;
+            text-transform: uppercase;
+        }
+
+        .brand-divider {
+            width: 2.5rem;
+            height: 2px;
+            background-color: rgba(219, 225, 255, 0.4);
+            margin: 1rem 0;
+            border-radius: 2px;
+        }
+
+        .brand-desc {
+            margin: 0;
+            font-size: 15px;
+            line-height: 22px;
+            color: rgba(211, 228, 254, 0.9);
+        }
+
+        .brand-footer {
+            padding-top: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.03em;
+            color: rgba(175, 200, 237, 0.75);
+        }
+
+        .brand-footer .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        /* Right Panel */
+        .form-panel {
+            padding: 2rem;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .form-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-title {
+            margin: 0;
+            font-size: 24px;
+            line-height: 32px;
+            letter-spacing: -0.015em;
+            font-weight: 700;
+            color: #0b1c30;
+        }
+
+        .form-subtitle {
+            margin: 0.375rem 0 0;
+            font-size: 15px;
+            line-height: 22px;
+            color: #43474d;
+        }
+
+        .error-alert {
+            background-color: #ffdad6;
+            color: #93000a;
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .error-alert .material-symbols-outlined {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            line-height: 16px;
+            letter-spacing: 0.02em;
+            font-weight: 600;
+            color: #43474d;
+            margin-bottom: 0.375rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 0.875rem;
+            color: #74777e;
+            font-size: 20px;
+            pointer-events: none;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.75rem;
+            background-color: rgba(239, 244, 255, 0.7);
+            border: 1px solid #e5eeff;
+            border-radius: 0.375rem;
+            font-family: inherit;
+            font-size: 15px;
+            line-height: 22px;
+            color: #0b1c30;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-input.has-toggle {
+            padding-right: 2.75rem;
+        }
+
+        .form-input::placeholder {
+            color: rgba(116, 119, 126, 0.75);
+        }
+
+        .form-input:focus {
+            outline: none;
+            background-color: #ffffff;
+            border-color: #0051d5;
+            box-shadow: 0 0 0 3px rgba(0, 81, 213, 0.2);
+        }
+
+        .toggle-btn {
+            position: absolute;
+            right: 0.75rem;
+            padding: 0.375rem;
+            background: transparent;
             border: none;
-            border-radius: 12px;
+            border-radius: 0.25rem;
+            color: #74777e;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s ease;
+        }
+
+        .toggle-btn:hover {
+            color: #0b1c30;
+        }
+
+        .toggle-btn .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        .form-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.25rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .remember-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            color: #43474d;
+        }
+
+        .remember-checkbox {
+            width: 1rem;
+            height: 1rem;
+            accent-color: #0051d5;
+            cursor: pointer;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background-color: #00162d;
+            color: #ffffff;
+            border: none;
+            border-radius: 0.375rem;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 22, 45, 0.2);
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .submit-btn:hover {
+            background-color: #0f2b48;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.99);
+        }
+
+        .submit-btn .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        @@media (min-width: 768px) {
+            main {
+                padding: 1.5rem;
+            }
+            .brand-panel, .form-panel {
+                padding: 2.5rem;
+            }
+        }
+
+        @@media (min-width: 992px) {
+            .login-card {
+                grid-template-columns: 5fr 7fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="card login-card shadow-sm p-4">
-        <div class="text-center mb-4">
-            <h4 class="fw-bold mb-1">AN Instalaciones</h4>
-            <p class="text-muted small mb-0">Iniciar sesión para continuar</p>
+    <main>
+        <div class="login-wrapper">
+            <div class="glow-top"></div>
+            <div class="glow-bottom"></div>
+
+            <div class="login-card">
+                <!-- Panel Izquierdo: Identidad -->
+                <div class="brand-panel">
+                    <div>
+                        <div class="brand-logo-box">
+                            <img src="/img/logo AN INTALACIONES.png" alt="AN Instalaciones" class="brand-logo-img" />
+                        </div>
+                        <h1 class="brand-title">AN Instalaciones</h1>
+                        <p class="brand-subtitle">Sanitarias &amp; Gas Natural</p>
+                        <div class="brand-divider"></div>
+                        <p class="brand-desc">Gestión operativa de obras, clientes y pagos.</p>
+                    </div>
+                    <div class="brand-footer">
+                        <span class="material-symbols-outlined">verified</span>
+                        <span>Acceso Seguro Matriculados</span>
+                    </div>
+                </div>
+
+                <!-- Panel Derecho: Formulario -->
+                <div class="form-panel">
+                    <div class="form-header">
+                        <h2 class="form-title">Iniciar Sesión</h2>
+                        <p class="form-subtitle">Ingresa tus credenciales para acceder a la plataforma.</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="error-alert" role="alert">
+                            <span class="material-symbols-outlined">error</span>
+                            <span>@Model.ErrorMessage</span>
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div class="form-group">
+                            <label asp-for="Usuario" class="form-label">Usuario o Correo Electrónico</label>
+                            <div class="input-wrapper">
+                                <span class="material-symbols-outlined input-icon">badge</span>
+                                <input asp-for="Usuario"
+                                       class="form-input"
+                                       placeholder="ej. usuario@gmail.com"
+                                       autocomplete="username"
+                                       required
+                                       autofocus />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="Password" class="form-label">Contraseña</label>
+                            <div class="input-wrapper">
+                                <span class="material-symbols-outlined input-icon">lock</span>
+                                <input asp-for="Password"
+                                       id="passwordInput"
+                                       type="password"
+                                       class="form-input has-toggle"
+                                       placeholder="••••••••••••"
+                                       autocomplete="current-password"
+                                       required />
+                                <button type="button"
+                                        class="toggle-btn"
+                                        aria-label="Alternar visibilidad de contraseña"
+                                        onclick="togglePasswordVisibility()">
+                                    <span class="material-symbols-outlined" id="togglePasswordIcon">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-options">
+                            <label class="remember-label">
+                                <input asp-for="Recordarme" type="checkbox" class="remember-checkbox" />
+                                <span>Recordarme en este equipo</span>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="submit-btn">
+                            <span>Ingresar al Sistema</span>
+                            <span class="material-symbols-outlined">login</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
+    </main>
 
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-        {
-            <div class="alert alert-danger py-2 small" role="alert">
-                @Model.ErrorMessage
-            </div>
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('passwordInput');
+            const toggleIcon = document.getElementById('togglePasswordIcon');
+            if (!passwordInput || !toggleIcon) return;
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.textContent = 'visibility_off';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.textContent = 'visibility';
+            }
         }
-
-        <form method="post">
-            <div class="mb-3">
-                <label asp-for="Usuario" class="form-label small fw-semibold">Usuario</label>
-                <input asp-for="Usuario" class="form-control" autocomplete="username" required autofocus />
-            </div>
-            <div class="mb-4">
-                <label asp-for="Password" class="form-label small fw-semibold">Contraseña</label>
-                <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" required />
-            </div>
-            <button type="submit" class="btn btn-primary w-100 fw-semibold">Ingresar</button>
-        </form>
-    </div>
+    </script>
 </body>
 </html>

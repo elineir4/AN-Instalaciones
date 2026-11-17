@@ -25,6 +25,9 @@ namespace Proyecto2026.Server.Pages
         [BindProperty]
         public string Password { get; set; } = string.Empty;
 
+        [BindProperty]
+        public bool Recordarme { get; set; }
+
         public string? ErrorMessage { get; set; }
 
         public IActionResult OnGet()
@@ -66,7 +69,10 @@ namespace Proyecto2026.Server.Pages
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
 
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties { IsPersistent = Recordarme });
 
             var target = !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl) ? returnUrl : "/";
             return LocalRedirect(target);
