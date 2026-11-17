@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Nav
 
 <div class="page">
     <div class="sidebar">
@@ -27,6 +28,11 @@
                         <span class="material-symbols-outlined fs-5">person</span>
                     </div>
                 </div>
+                <div class="topbar-divider"></div>
+                <button type="button" class="logout-btn" title="Cerrar sesión" @onclick="CerrarSesion">
+                    <span class="material-symbols-outlined logout-icon">logout</span>
+                    <span class="logout-text">Salir</span>
+                </button>
             </div>
         </header>
 
@@ -35,3 +41,7 @@
         </article>
     </main>
 </div>
+
+@code {
+    private void CerrarSesion() => Nav.NavigateTo("/logout", forceLoad: true);
+}

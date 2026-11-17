@@ -13,11 +13,11 @@
     <link rel="stylesheet" href="@Assets["Proyecto2026.Server.styles.css"]" />
     <ImportMap />
     <link rel="icon" type="image/png" href="@Assets["favicon.png"]" />
-    <HeadOutlet @rendermode="InteractiveAuto" />
+    <HeadOutlet @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveAuto" />
+    <Routes @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
     <ReconnectModal />
     <script src="_framework/blazor.web.js"></script>
 </body>

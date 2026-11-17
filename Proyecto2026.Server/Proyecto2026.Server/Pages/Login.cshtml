@@ -1,0 +1,57 @@
+@page "/login"
+@model Proyecto2026.Server.Pages.LoginModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iniciar sesión - AN Instalaciones</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body {
+            background-color: #f4f6f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            border: none;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card login-card shadow-sm p-4">
+        <div class="text-center mb-4">
+            <h4 class="fw-bold mb-1">AN Instalaciones</h4>
+            <p class="text-muted small mb-0">Iniciar sesión para continuar</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger py-2 small" role="alert">
+                @Model.ErrorMessage
+            </div>
+        }
+
+        <form method="post">
+            <div class="mb-3">
+                <label asp-for="Usuario" class="form-label small fw-semibold">Usuario</label>
+                <input asp-for="Usuario" class="form-control" autocomplete="username" required autofocus />
+            </div>
+            <div class="mb-4">
+                <label asp-for="Password" class="form-label small fw-semibold">Contraseña</label>
+                <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" required />
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-semibold">Ingresar</button>
+        </form>
+    </div>
+</body>
+</html>

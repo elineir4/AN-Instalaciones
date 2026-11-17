@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Proyecto2026.BD.Datos;
@@ -15,6 +17,29 @@ var connectionString = builder.Configuration.GetConnectionString("ConnSqlServer"
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
 // Agregar el contexto de la base de datos y configurar la cadena de conexión para SQL Server
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/login";
+        options.Cookie.Name = "AN.Auth";
+        options.Cookie.HttpOnly = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Events.OnRedirectToLogin = async ctx =>
+        {
+            if (ctx.Request.Path.StartsWithSegments("/api"))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                ctx.Response.ContentType = "text/plain";
+                await ctx.Response.WriteAsync("No autorizado");
+                return;
+            }
+            ctx.Response.Redirect(ctx.RedirectUri);
+        };
+    });
+
+builder.Services.AddAuthorization(options => options.FallbackPolicy = options.DefaultPolicy);
 
 builder.Services.AddRazorComponents() // agregar servicios para componentes Razor
     .AddInteractiveServerComponents() // agregar servicios para componentes interactivos del lado del servidor
@@ -62,12 +87,17 @@ else // Si el entorno no es de desarrollo, habilitar el manejo de excepciones y 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseAntiforgery(); // Habilitar la protección contra ataques CSRF (Cross-Site Request Forgery) en los formularios de Blazor
 
-app.MapStaticAssets(); // Debe ir ANTES de MapRazorComponents: sirve los archivos estáticos y los de _framework
+app.MapStaticAssets().AllowAnonymous(); // Debe ir ANTES de MapRazorComponents: sirve los archivos estáticos y los de _framework
 
 app.MapControllers(); // Mapear los controladores a las rutas correspondientes
 app.MapRazorPages();
+
+app.MapGet("/logout", async (HttpContext ctx) => { await ctx.SignOutAsync(); return Results.Redirect("/login"); });
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

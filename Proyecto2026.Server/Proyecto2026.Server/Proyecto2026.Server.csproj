@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
@@ -6,7 +6,8 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
 		<NuGetAudit>false</NuGetAudit>
-	</PropertyGroup>
+	  <UserSecretsId>c69c0821-47e1-4cfb-b066-bae032a8639d</UserSecretsId>
+  </PropertyGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\Proyecto2026.BD\Proyecto2026.BD.csproj" />
