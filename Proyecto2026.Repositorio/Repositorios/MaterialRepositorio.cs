@@ -16,6 +16,32 @@ namespace Proyecto2026.Repositorio.Repositorios
             this.context = context;
         }
 
+        public async Task<List<Material>> ObtenerTodosConRelacionesAsync()
+        {
+            return await context.Set<Material>()
+                .AsNoTracking()
+                .Include(m => m.Trabajo)
+                    .ThenInclude(t => t.Cliente)
+                .OrderByDescending(m => m.FechaUso)
+                .ThenByDescending(m => m.Id)
+                .ToListAsync();
+        }
+
+        public async Task<Material?> ObtenerPorIdConRelacionesAsync(int id)
+        {
+            return await context.Set<Material>()
+                .AsNoTracking()
+                .Include(m => m.Trabajo)
+                    .ThenInclude(t => t.Cliente)
+                .FirstOrDefaultAsync(m => m.Id == id);
+        }
+
+        public async Task<Material?> ObtenerPorIdAsync(int id)
+        {
+            return await context.Set<Material>()
+                .FirstOrDefaultAsync(m => m.Id == id);
+        }
+
         // Retorna la lista de materiales pertenecientes a un trabajo específico
         public async Task<List<Material>> ObtenerPorTrabajoIdAsync(int trabajoId)
         {
@@ -59,6 +85,7 @@ namespace Proyecto2026.Repositorio.Repositorios
             if (material == null) return false;
 
             material.PrecioUnitario = nuevoPrecio;
+            material.CostoTotal = material.Cantidad * nuevoPrecio;
             return await context.SaveChangesAsync() > 0;
         }
 
@@ -71,6 +98,7 @@ namespace Proyecto2026.Repositorio.Repositorios
             if (material == null) return false;
 
             material.Cantidad = nuevaCantidad;
+            material.CostoTotal = nuevaCantidad * material.PrecioUnitario;
             return await context.SaveChangesAsync() > 0;
         }
 

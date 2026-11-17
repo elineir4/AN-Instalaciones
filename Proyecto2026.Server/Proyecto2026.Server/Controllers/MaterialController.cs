@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Proyecto2026.BD.Datos.Entity;
 using Proyecto2026.Repositorio.Repositorios;
+using Proyecto2026.Shared.DTO;
 
 namespace Proyecto2026.Server.Controllers // Ajusta este namespace al de tu carpeta Controllers
 {
@@ -9,17 +10,21 @@ namespace Proyecto2026.Server.Controllers // Ajusta este namespace al de tu carp
     public class MaterialesController : ControllerBase
     {
         private readonly IMaterialRepositorio _repositorio;
+        private readonly ITrabajoRepositorio _trabajoRepositorio;
 
-        public MaterialesController(IMaterialRepositorio repositorio)
+        public MaterialesController(
+            IMaterialRepositorio repositorio,
+            ITrabajoRepositorio trabajoRepositorio)
         {
             _repositorio = repositorio;
+            _trabajoRepositorio = trabajoRepositorio;
         }
 
         // GET: api/materiales
         [HttpGet]
         public async Task<ActionResult<List<Material>>> GetAll()
         {
-            var materiales = await _repositorio.Select();
+            var materiales = await _repositorio.ObtenerTodosConRelacionesAsync();
             return Ok(materiales);
         }
 
@@ -27,9 +32,7 @@ namespace Proyecto2026.Server.Controllers // Ajusta este namespace al de tu carp
         [HttpGet("{id:int}")]
         public async Task<ActionResult<Material>> GetById(int id)
         {
-            var materiales = await _repositorio.Select();
-            var material = materiales.FirstOrDefault(m => m.Id == id);
-
+            var material = await _repositorio.ObtenerPorIdConRelacionesAsync(id);
             if (material == null)
                 return NotFound($"No se encontró el material con ID {id}.");
 
@@ -65,28 +68,66 @@ namespace Proyecto2026.Server.Controllers // Ajusta este namespace al de tu carp
 
         // POST: api/materiales
         [HttpPost]
-        public async Task<ActionResult<Material>> Post([FromBody] Material material)
+        public async Task<ActionResult<Material>> Post([FromBody] MaterialFormDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            if (string.IsNullOrWhiteSpace(dto.NombreMaterial))
+                return BadRequest("El nombre del material es obligatorio.");
+
+            var trabajoExiste = await _trabajoRepositorio.Existe(dto.TrabajoId);
+            if (!trabajoExiste)
+                return BadRequest($"El trabajo con ID {dto.TrabajoId} no existe.");
+
+            var material = new Material
+            {
+                NombreMaterial = dto.NombreMaterial.Trim(),
+                Cantidad = dto.Cantidad,
+                UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "unidades" : dto.UnidadMedida.Trim(),
+                PrecioUnitario = dto.PrecioUnitario,
+                CostoTotal = dto.Cantidad * dto.PrecioUnitario,
+                FechaUso = dto.FechaUso,
+                TrabajoId = dto.TrabajoId
+            };
+
             var creado = await _repositorio.Insert(material);
-            return CreatedAtAction(nameof(GetById), new { id = creado.Id }, creado);
+            var completo = await _repositorio.ObtenerPorIdConRelacionesAsync(creado.Id) ?? creado;
+            return CreatedAtAction(nameof(GetById), new { id = creado.Id }, completo);
         }
 
         // PUT: api/materiales/5
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<Material>> Put(int id, [FromBody] Material material)
+        public async Task<ActionResult<Material>> Put(int id, [FromBody] MaterialFormDTO dto)
         {
-            if (id != material.Id)
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (dto.Id != 0 && id != dto.Id)
                 return BadRequest("El ID de la URL no coincide con el ID del material.");
 
-            var existe = await _repositorio.Existe(id);
-            if (!existe)
+            if (string.IsNullOrWhiteSpace(dto.NombreMaterial))
+                return BadRequest("El nombre del material es obligatorio.");
+
+            var materialExistente = await _repositorio.ObtenerPorIdAsync(id);
+            if (materialExistente == null)
                 return NotFound($"No se encontró el material con ID {id}.");
 
-            var actualizado = await _repositorio.Update(material);
-            return Ok(actualizado);
+            var trabajoExiste = await _trabajoRepositorio.Existe(dto.TrabajoId);
+            if (!trabajoExiste)
+                return BadRequest($"El trabajo con ID {dto.TrabajoId} no existe.");
+
+            materialExistente.NombreMaterial = dto.NombreMaterial.Trim();
+            materialExistente.Cantidad = dto.Cantidad;
+            materialExistente.UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "unidades" : dto.UnidadMedida.Trim();
+            materialExistente.PrecioUnitario = dto.PrecioUnitario;
+            materialExistente.CostoTotal = dto.Cantidad * dto.PrecioUnitario;
+            materialExistente.FechaUso = dto.FechaUso;
+            materialExistente.TrabajoId = dto.TrabajoId;
+
+            await _repositorio.Update(materialExistente);
+            var completo = await _repositorio.ObtenerPorIdConRelacionesAsync(id) ?? materialExistente;
+            return Ok(completo);
         }
 
         // PATCH: api/materiales/5/precio

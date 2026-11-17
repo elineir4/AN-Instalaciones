@@ -6,6 +6,9 @@ namespace Proyecto2026.Repositorio.Repositorios
 {
     public interface IMaterialRepositorio : IRepositorio<Material>
     {
+        Task<List<Material>> ObtenerTodosConRelacionesAsync();
+        Task<Material?> ObtenerPorIdConRelacionesAsync(int id);
+        Task<Material?> ObtenerPorIdAsync(int id);
         Task<List<Material>> ObtenerPorTrabajoIdAsync(int trabajoId);
         Task<decimal> ObtenerCostoTotalPorTrabajoIdAsync(int trabajoId);
         Task<List<Material>> BuscarPorNombreAsync(string nombreMaterial);

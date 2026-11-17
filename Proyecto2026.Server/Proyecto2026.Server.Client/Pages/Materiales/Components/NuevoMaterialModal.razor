@@ -1,0 +1,419 @@
+@using System.Globalization
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Servicios.ServicioHTTP
+@using Proyecto2026.Shared.DTO
+@inject IHttpService Http
+
+@if (Visible)
+{
+    <div class="mat-modal-backdrop" @onclick="Cerrar"></div>
+
+    <div class="mat-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tituloModalMaterial">
+        <div class="mat-modal-content">
+            <div class="mat-modal-header">
+                <div>
+                    <h5 class="mat-modal-title" id="tituloModalMaterial">
+                        @(EsEdicion ? "Editar Material" : "Cargar Material")
+                    </h5>
+                    <span class="mat-modal-subtitle">Los campos marcados con * son obligatorios.</span>
+                </div>
+                <button type="button" class="mat-modal-close" @onclick="Cerrar" aria-label="Cerrar" disabled="@isEnviando">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="mat-modal-body">
+                @if (!string.IsNullOrWhiteSpace(errorServidor))
+                {
+                    <div class="mat-alert-error" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        <span>@errorServidor</span>
+                    </div>
+                }
+
+                <div class="row g-3">
+                    <!-- Nombre del material -->
+                    <div class="col-12">
+                        <label for="matNombre" class="mat-label">
+                            Material / Insumo <span class="text-danger">*</span>
+                        </label>
+                        <input id="matNombre"
+                               type="text"
+                               class="mat-input @(errorNombre != null ? "is-invalid" : "")"
+                               placeholder="Ej: Caño Termofusión Ø 25mm x 4m"
+                               autocomplete="off"
+                               value="@nombreMaterial"
+                               @oninput="OnNombreInput"
+                               disabled="@isEnviando" />
+                        @if (errorNombre != null)
+                        {
+                            <div class="mat-field-error">@errorNombre</div>
+                        }
+                    </div>
+
+                    <!-- Trabajo / Obra -->
+                    <div class="col-12">
+                        <label for="matTrabajo" class="mat-label">
+                            Trabajo / Obra asignada <span class="text-danger">*</span>
+                        </label>
+                        <select id="matTrabajo"
+                                class="mat-input @(errorTrabajo != null ? "is-invalid" : "")"
+                                value="@trabajoIdSeleccionado"
+                                @onchange="OnTrabajoChanged"
+                                disabled="@isEnviando">
+                            <option value="0">Seleccionar trabajo...</option>
+                            @foreach (var t in Trabajos)
+                            {
+                                <option value="@t.Id">#TRB-@t.Id · @t.NombreObra (@t.NombreClienteCompleto)</option>
+                            }
+                        </select>
+                        @if (errorTrabajo != null)
+                        {
+                            <div class="mat-field-error">@errorTrabajo</div>
+                        }
+                    </div>
+
+                    <!-- Cantidad -->
+                    <div class="col-12 col-sm-6">
+                        <label for="matCantidad" class="mat-label">
+                            Cantidad <span class="text-danger">*</span>
+                        </label>
+                        <input id="matCantidad"
+                               type="number"
+                               step="0.01"
+                               min="0.01"
+                               class="mat-input @(errorCantidad != null ? "is-invalid" : "")"
+                               value="@cantidadTexto"
+                               @oninput="OnCantidadInput"
+                               disabled="@isEnviando" />
+                        @if (errorCantidad != null)
+                        {
+                            <div class="mat-field-error">@errorCantidad</div>
+                        }
+                    </div>
+
+                    <!-- Unidad de medida -->
+                    <div class="col-12 col-sm-6">
+                        <label for="matUnidad" class="mat-label">
+                            Unidad de medida <span class="text-danger">*</span>
+                        </label>
+                        <input id="matUnidad"
+                               type="text"
+                               list="unidadesSugeridas"
+                               class="mat-input @(errorUnidad != null ? "is-invalid" : "")"
+                               placeholder="unidades, metros, frascos..."
+                               value="@unidadMedida"
+                               @oninput="OnUnidadInput"
+                               disabled="@isEnviando" />
+                        <datalist id="unidadesSugeridas">
+                            <option value="unidades" />
+                            <option value="unidad" />
+                            <option value="metros" />
+                            <option value="frascos" />
+                            <option value="rollos" />
+                            <option value="cajas" />
+                            <option value="kg" />
+                        </datalist>
+                        @if (errorUnidad != null)
+                        {
+                            <div class="mat-field-error">@errorUnidad</div>
+                        }
+                    </div>
+
+                    <!-- Precio unitario -->
+                    <div class="col-12 col-sm-6">
+                        <label for="matPrecio" class="mat-label">Precio Unitario</label>
+                        <div class="mat-input-group">
+                            <span class="mat-input-prefix">$</span>
+                            <input id="matPrecio"
+                                   type="number"
+                                   step="0.01"
+                                   min="0"
+                                   class="mat-input mat-input-with-prefix @(errorPrecio != null ? "is-invalid" : "")"
+                                   value="@precioTexto"
+                                   @oninput="OnPrecioInput"
+                                   disabled="@isEnviando" />
+                        </div>
+                        @if (errorPrecio != null)
+                        {
+                            <div class="mat-field-error">@errorPrecio</div>
+                        }
+                    </div>
+
+                    <!-- Fecha de uso -->
+                    <div class="col-12 col-sm-6">
+                        <label for="matFechaUso" class="mat-label">
+                            Fecha de uso <span class="text-danger">*</span>
+                        </label>
+                        <input id="matFechaUso"
+                               type="date"
+                               class="mat-input @(errorFecha != null ? "is-invalid" : "")"
+                               value="@fechaUsoTexto"
+                               @onchange="OnFechaChanged"
+                               disabled="@isEnviando" />
+                        @if (errorFecha != null)
+                        {
+                            <div class="mat-field-error">@errorFecha</div>
+                        }
+                    </div>
+
+                    <!-- Resumen de costo total -->
+                    <div class="col-12">
+                        <div class="mat-total-preview">
+                            <span>Costo total estimado</span>
+                            <strong>@FormatoMonedaHelper.FormatearMoneda(TotalEstimado)</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mat-modal-footer">
+                <button type="button" class="mat-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
+                    Cancelar
+                </button>
+                <button type="button" class="mat-btn-primary" @onclick="Guardar" disabled="@isEnviando">
+                    @if (isEnviando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+                        <span>@(EsEdicion ? "Guardar Cambios" : "Cargar Material")</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public MaterialItem? MaterialEditar { get; set; }
+    [Parameter] public List<TrabajoItem> Trabajos { get; set; } = new();
+    [Parameter] public EventCallback<string> OnMaterialGuardado { get; set; }
+
+    private bool EsEdicion => MaterialEditar != null;
+    private bool prevVisible;
+    private int? prevMaterialId;
+
+    private string nombreMaterial = string.Empty;
+    private int trabajoIdSeleccionado;
+    private string cantidadTexto = "1";
+    private string unidadMedida = "unidades";
+    private string precioTexto = "0";
+    private string fechaUsoTexto = DateTime.Today.ToString("yyyy-MM-dd");
+
+    private string? errorNombre;
+    private string? errorTrabajo;
+    private string? errorCantidad;
+    private string? errorUnidad;
+    private string? errorPrecio;
+    private string? errorFecha;
+    private string? errorServidor;
+    private bool isEnviando;
+
+    private decimal TotalEstimado
+    {
+        get
+        {
+            TryParseDecimal(cantidadTexto, out var c);
+            TryParseDecimal(precioTexto, out var p);
+            return Math.Max(0, c) * Math.Max(0, p);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var currentId = MaterialEditar?.Id;
+        if (Visible && (!prevVisible || prevMaterialId != currentId))
+        {
+            InicializarFormulario();
+        }
+        prevVisible = Visible;
+        prevMaterialId = currentId;
+    }
+
+    private void InicializarFormulario()
+    {
+        errorNombre = null;
+        errorTrabajo = null;
+        errorCantidad = null;
+        errorUnidad = null;
+        errorPrecio = null;
+        errorFecha = null;
+        errorServidor = null;
+        isEnviando = false;
+
+        if (MaterialEditar != null)
+        {
+            nombreMaterial = MaterialEditar.NombreMaterial;
+            trabajoIdSeleccionado = MaterialEditar.TrabajoId;
+            cantidadTexto = MaterialEditar.Cantidad.ToString("0.##", CultureInfo.InvariantCulture);
+            unidadMedida = string.IsNullOrWhiteSpace(MaterialEditar.UnidadMedida) ? "unidades" : MaterialEditar.UnidadMedida;
+            precioTexto = MaterialEditar.PrecioUnitario.ToString("0.##", CultureInfo.InvariantCulture);
+            fechaUsoTexto = MaterialEditar.FechaUso.Year > 1
+                ? MaterialEditar.FechaUso.ToString("yyyy-MM-dd")
+                : DateTime.Today.ToString("yyyy-MM-dd");
+        }
+        else
+        {
+            nombreMaterial = string.Empty;
+            trabajoIdSeleccionado = 0;
+            cantidadTexto = "1";
+            unidadMedida = "unidades";
+            precioTexto = "0";
+            fechaUsoTexto = DateTime.Today.ToString("yyyy-MM-dd");
+        }
+    }
+
+    private void OnNombreInput(ChangeEventArgs e)
+    {
+        nombreMaterial = e.Value?.ToString() ?? string.Empty;
+        errorNombre = null;
+        errorServidor = null;
+    }
+
+    private void OnTrabajoChanged(ChangeEventArgs e)
+    {
+        int.TryParse(e.Value?.ToString(), out trabajoIdSeleccionado);
+        errorTrabajo = null;
+        errorServidor = null;
+    }
+
+    private void OnCantidadInput(ChangeEventArgs e)
+    {
+        cantidadTexto = e.Value?.ToString() ?? string.Empty;
+        errorCantidad = null;
+        errorServidor = null;
+    }
+
+    private void OnUnidadInput(ChangeEventArgs e)
+    {
+        unidadMedida = e.Value?.ToString() ?? string.Empty;
+        errorUnidad = null;
+        errorServidor = null;
+    }
+
+    private void OnPrecioInput(ChangeEventArgs e)
+    {
+        precioTexto = e.Value?.ToString() ?? string.Empty;
+        errorPrecio = null;
+        errorServidor = null;
+    }
+
+    private void OnFechaChanged(ChangeEventArgs e)
+    {
+        fechaUsoTexto = e.Value?.ToString() ?? DateTime.Today.ToString("yyyy-MM-dd");
+        errorFecha = null;
+        errorServidor = null;
+    }
+
+    private async Task Guardar()
+    {
+        if (isEnviando) return;
+
+        errorNombre = null;
+        errorTrabajo = null;
+        errorCantidad = null;
+        errorUnidad = null;
+        errorPrecio = null;
+        errorFecha = null;
+        errorServidor = null;
+
+        if (string.IsNullOrWhiteSpace(nombreMaterial))
+            errorNombre = "El nombre del material es obligatorio.";
+
+        if (trabajoIdSeleccionado <= 0)
+            errorTrabajo = "Debe seleccionar un trabajo u obra.";
+
+        if (!TryParseDecimal(cantidadTexto, out var cantidad) || cantidad <= 0)
+            errorCantidad = "Ingresá una cantidad mayor a 0.";
+
+        if (string.IsNullOrWhiteSpace(unidadMedida))
+            errorUnidad = "La unidad de medida es obligatoria.";
+
+        decimal precio = 0;
+        if (!string.IsNullOrWhiteSpace(precioTexto))
+        {
+            if (!TryParseDecimal(precioTexto, out precio) || precio < 0)
+                errorPrecio = "El precio debe ser mayor o igual a 0.";
+        }
+
+        if (!DateTime.TryParse(fechaUsoTexto, out var fechaUso))
+            errorFecha = "La fecha de uso no es válida.";
+
+        if (errorNombre != null || errorTrabajo != null || errorCantidad != null || errorUnidad != null || errorPrecio != null || errorFecha != null)
+            return;
+
+        isEnviando = true;
+        try
+        {
+            var dto = new MaterialFormDTO
+            {
+                Id = MaterialEditar?.Id ?? 0,
+                NombreMaterial = nombreMaterial.Trim(),
+                Cantidad = cantidad,
+                UnidadMedida = unidadMedida.Trim(),
+                PrecioUnitario = precio,
+                FechaUso = fechaUso,
+                TrabajoId = trabajoIdSeleccionado
+            };
+
+            if (EsEdicion)
+            {
+                var resp = await Http.PutAsync<MaterialFormDTO, MaterialItem>($"api/materiales/{MaterialEditar!.Id}", dto);
+                if (resp.Error)
+                {
+                    errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+                    return;
+                }
+            }
+            else
+            {
+                var resp = await Http.PostAsync<MaterialFormDTO, MaterialItem>("api/materiales", dto);
+                if (resp.Error)
+                {
+                    errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+                    return;
+                }
+            }
+
+            var mensaje = EsEdicion
+                ? $"Se actualizó \"{dto.NombreMaterial}\"."
+                : $"Se registró \"{dto.NombreMaterial}\".";
+
+            Visible = false;
+            await VisibleChanged.InvokeAsync(false);
+            await OnMaterialGuardado.InvokeAsync(mensaje);
+        }
+        catch (Exception ex)
+        {
+            errorServidor = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isEnviando = false;
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isEnviando) return;
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private static bool TryParseDecimal(string? texto, out decimal valor)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            valor = 0;
+            return false;
+        }
+        return decimal.TryParse(texto.Replace(",", "."), NumberStyles.Number, CultureInfo.InvariantCulture, out valor);
+    }
+}
