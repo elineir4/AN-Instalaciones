@@ -1,0 +1,229 @@
+@using Microsoft.JSInterop
+@using Proyecto2026.Server.Client.Models
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (Visible && Trabajo != null)
+{
+    <div class="trb-modal-backdrop" @onclick="Cerrar"></div>
+
+    <div class="trb-modal-dialog trb-modal-dialog-xl" role="dialog" aria-modal="true" aria-labelledby="tituloVerPlano">
+        <div class="trb-modal-content">
+            <!-- Header -->
+            <div class="trb-modal-header">
+                <div>
+                    <h5 class="trb-modal-title" id="tituloVerPlano">
+                        Visor de Plano · #TRB-@Trabajo.Id
+                    </h5>
+                    <span class="trb-modal-subtitle">
+                        @Trabajo.NombreObra · @Trabajo.NombreArchivoPlano (@Trabajo.ExtensionPlano)
+                    </span>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    @if (viewerCargado && string.IsNullOrEmpty(errorViewer))
+                    {
+                        <button type="button" class="trb-btn-icon" title="Acercar" @onclick="ZoomIn">
+                            <span class="material-symbols-outlined" style="font-size: 19px;">zoom_in</span>
+                        </button>
+                        <button type="button" class="trb-btn-icon" title="Alejar" @onclick="ZoomOut">
+                            <span class="material-symbols-outlined" style="font-size: 19px;">zoom_out</span>
+                        </button>
+                        <button type="button" class="trb-btn-icon" title="Ajustar a pantalla" @onclick="ResetView">
+                            <span class="material-symbols-outlined" style="font-size: 19px;">fit_screen</span>
+                        </button>
+                        <button type="button" class="trb-btn-icon" title="Cambiar fondo claro/oscuro" @onclick="ToggleFondo">
+                            <span class="material-symbols-outlined" style="font-size: 19px;">contrast</span>
+                        </button>
+                    }
+                    <a href="@($"api/trabajos/{Trabajo.Id}/plano")"
+                       target="_blank"
+                       download
+                       class="trb-btn-primary text-decoration-none py-2 px-3">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+                        <span>Descargar</span>
+                    </a>
+                    <button type="button" class="trb-modal-close" @onclick="Cerrar" aria-label="Cerrar">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="trb-viewer-body">
+                @if (cargando)
+                {
+                    <div class="trb-viewer-overlay">
+                        <div class="spinner-border text-light mb-2" role="status"></div>
+                        <div class="text-light small">Cargando plano @Trabajo.ExtensionPlano...</div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(errorViewer))
+                {
+                    <div class="trb-viewer-overlay px-4 text-center">
+                        <span class="material-symbols-outlined text-warning mb-2" style="font-size: 40px;">architecture</span>
+                        <h6 class="text-white fw-bold mb-1">Vista previa no disponible para este archivo</h6>
+                        <p class="text-light opacity-75 small mb-3" style="max-width: 460px;">
+                            @errorViewer Podés descargarlo para abrirlo en AutoCAD / DWG TrueView.
+                        </p>
+                        <a href="@($"api/trabajos/{Trabajo.Id}/plano")"
+                           target="_blank"
+                           download
+                           class="trb-btn-primary text-decoration-none">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+                            <span>Descargar @Trabajo.NombreArchivoPlano</span>
+                        </a>
+                    </div>
+                }
+
+                <div id="@HostId" class="trb-viewer-host"></div>
+            </div>
+
+            <!-- Footer -->
+            <div class="trb-modal-footer justify-content-between align-items-center">
+                <span class="text-muted small">
+                    @if (entityCount > 0)
+                    {
+                        <span>@entityCount elementos CAD · Arrastrá para mover, rueda del mouse para zoom</span>
+                    }
+                    else
+                    {
+                        <span>Formato soportado: .DXF (nativo) y .DWG</span>
+                    }
+                </span>
+                <button type="button" class="trb-btn-secondary" @onclick="Cerrar">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public TrabajoItem? Trabajo { get; set; }
+
+    private const string HostId = "trbPlanoHost";
+
+    private IJSObjectReference? module;
+    private bool prevVisible;
+    private int? prevTrabajoId;
+    private bool cargando;
+    private bool viewerCargado;
+    private string? errorViewer;
+    private int entityCount;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var currentId = Trabajo?.Id;
+        if (Visible && Trabajo != null && (!prevVisible || prevTrabajoId != currentId))
+        {
+            prevVisible = Visible;
+            prevTrabajoId = currentId;
+            await InicializarViewerAsync();
+        }
+        else if (!Visible && prevVisible)
+        {
+            prevVisible = false;
+            prevTrabajoId = null;
+            await LimpiarViewerAsync();
+        }
+    }
+
+    private async Task InicializarViewerAsync()
+    {
+        if (Trabajo == null) return;
+
+        cargando = true;
+        viewerCargado = false;
+        errorViewer = null;
+        entityCount = 0;
+        StateHasChanged();
+
+        try
+        {
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/planoViewer.js");
+            var res = await module.InvokeAsync<ViewerInitResult>(
+                "initPlanoViewer",
+                HostId,
+                $"api/trabajos/{Trabajo.Id}/plano",
+                $".{Trabajo.ExtensionPlano}");
+
+            if (res.Ok)
+            {
+                viewerCargado = true;
+                entityCount = res.Count;
+            }
+            else
+            {
+                errorViewer = res.Message ?? "No se pudo renderizar el plano.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorViewer = $"Error al iniciar el visor: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ZoomIn()
+    {
+        if (module != null)
+            await module.InvokeVoidAsync("zoomPlano", HostId, 1.25);
+    }
+
+    private async Task ZoomOut()
+    {
+        if (module != null)
+            await module.InvokeVoidAsync("zoomPlano", HostId, 0.8);
+    }
+
+    private async Task ResetView()
+    {
+        if (module != null)
+            await module.InvokeVoidAsync("resetPlano", HostId);
+    }
+
+    private async Task ToggleFondo()
+    {
+        if (module != null)
+            await module.InvokeVoidAsync("toggleFondoPlano", HostId);
+    }
+
+    private async Task LimpiarViewerAsync()
+    {
+        if (module != null)
+        {
+            try { await module.InvokeVoidAsync("disposePlanoViewer", HostId); } catch { }
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        await LimpiarViewerAsync();
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await LimpiarViewerAsync();
+        if (module != null)
+        {
+            try { await module.DisposeAsync(); } catch { }
+        }
+    }
+
+    private sealed class ViewerInitResult
+    {
+        public bool Ok { get; set; }
+        public int Count { get; set; }
+        public string? Message { get; set; }
+    }
+}

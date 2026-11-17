@@ -1,0 +1,204 @@
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Forms
+@using Proyecto2026.Server.Client.Models
+@inject HttpClient HttpClient
+
+@if (Visible && Trabajo != null)
+{
+    <div class="trb-modal-backdrop" @onclick="Cerrar"></div>
+
+    <div class="trb-modal-dialog trb-modal-dialog-sm" role="dialog" aria-modal="true" aria-labelledby="tituloSubirPlano">
+        <div class="trb-modal-content">
+            <div class="trb-modal-header">
+                <div>
+                    <h5 class="trb-modal-title" id="tituloSubirPlano">
+                        @(Trabajo.TienePlano ? "Reemplazar Plano AutoCAD" : "Subir Plano AutoCAD")
+                    </h5>
+                    <span class="trb-modal-subtitle">#TRB-@Trabajo.Id · @Trabajo.NombreObra</span>
+                </div>
+                <button type="button" class="trb-modal-close" @onclick="Cerrar" aria-label="Cerrar" disabled="@isSubiendo">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="trb-modal-body">
+                @if (!string.IsNullOrWhiteSpace(errorMensaje))
+                {
+                    <div class="trb-alert-error" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        <span>@errorMensaje</span>
+                    </div>
+                }
+
+                <label for="modalPlanoInput" class="trb-file-drop trb-file-drop-lg w-100 mb-0" style="cursor: pointer;">
+                    <InputFile id="modalPlanoInput"
+                               accept=".dwg,.dxf"
+                               OnChange="OnArchivoSeleccionado"
+                               class="d-none"
+                               disabled="@isSubiendo" />
+                    <div class="trb-file-info">
+                        <span class="material-symbols-outlined trb-file-icon">upload_file</span>
+                        @if (archivoSeleccionado != null)
+                        {
+                            <div>
+                                <div class="trb-file-name">@archivoSeleccionado.Name</div>
+                                <div class="trb-file-size">@FormatearTamano(archivoSeleccionado.Size)</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div>
+                                <div class="trb-file-name">Hacé clic para elegir un archivo .DWG o .DXF</div>
+                                <div class="trb-file-size">Máximo 100 MB · Reemplaza el plano anterior si existe</div>
+                            </div>
+                        }
+                    </div>
+                </label>
+            </div>
+
+            <div class="trb-modal-footer">
+                <button type="button" class="trb-btn-secondary" @onclick="Cerrar" disabled="@isSubiendo">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="trb-btn-primary"
+                        @onclick="Subir"
+                        disabled="@(isSubiendo || archivoSeleccionado == null)">
+                    @if (isSubiendo)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Subiendo...</span>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 18px;">cloud_upload</span>
+                        <span>Subir Plano</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public TrabajoItem? Trabajo { get; set; }
+    [Parameter] public EventCallback<string> OnPlanoSubido { get; set; }
+
+    private const long MaxFileSize = 100_000_000;
+
+    private IBrowserFile? archivoSeleccionado;
+    private string? errorMensaje;
+    private bool isSubiendo;
+    private bool prevVisible;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible && !prevVisible)
+        {
+            archivoSeleccionado = null;
+            errorMensaje = null;
+            isSubiendo = false;
+        }
+        prevVisible = Visible;
+    }
+
+    private void OnArchivoSeleccionado(InputFileChangeEventArgs e)
+    {
+        errorMensaje = null;
+        try
+        {
+            if (e.FileCount == 0)
+            {
+                archivoSeleccionado = null;
+                return;
+            }
+
+            var file = e.GetMultipleFiles(1).FirstOrDefault();
+            if (file == null)
+            {
+                archivoSeleccionado = null;
+                return;
+            }
+
+            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (ext != ".dwg" && ext != ".dxf")
+            {
+                errorMensaje = "Formato no válido. Solo se permiten archivos AutoCAD (.dwg o .dxf).";
+                archivoSeleccionado = null;
+                return;
+            }
+
+            if (file.Size > MaxFileSize)
+            {
+                errorMensaje = "El archivo supera el máximo permitido de 100 MB.";
+                archivoSeleccionado = null;
+                return;
+            }
+
+            archivoSeleccionado = file;
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"No se pudo leer el archivo seleccionado: {ex.Message}";
+            archivoSeleccionado = null;
+        }
+    }
+
+    private async Task Subir()
+    {
+        if (Trabajo == null || archivoSeleccionado == null || isSubiendo) return;
+
+        isSubiendo = true;
+        errorMensaje = null;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var stream = archivoSeleccionado.OpenReadStream(MaxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            using var fileContent = new ByteArrayContent(ms.ToArray());
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            content.Add(fileContent, "archivo", archivoSeleccionado.Name);
+
+            var response = await HttpClient.PostAsync($"api/trabajos/{Trabajo.Id}/plano", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMensaje = string.IsNullOrWhiteSpace(body)
+                    ? $"Error al subir el plano (HTTP {(int)response.StatusCode})."
+                    : body.Trim('"');
+                return;
+            }
+
+            var nombre = archivoSeleccionado.Name;
+            Visible = false;
+            await VisibleChanged.InvokeAsync(false);
+            await OnPlanoSubido.InvokeAsync($"Plano \"{nombre}\" cargado en #TRB-{Trabajo.Id}.");
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al subir el archivo: {ex.Message}";
+        }
+        finally
+        {
+            isSubiendo = false;
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isSubiendo) return;
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private static string FormatearTamano(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.0} KB";
+        return $"{bytes / (1024.0 * 1024.0):0.0} MB";
+    }
+}
