@@ -11,9 +11,9 @@ public class PagoEmpleado : EntityBase
     public string MedioPago{ get; set; }
 
     public int EmpleadoId {get; set; }
-    public int TrabajoId { get; set; }
+    public int? TrabajoId { get; set; }
     public Empleado Empleado { get; set; }
-    public Trabajo Trabajo{ get; set; }
+    public Trabajo? Trabajo{ get; set; }
 
 
 
