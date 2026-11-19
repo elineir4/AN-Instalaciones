@@ -3,7 +3,7 @@ using Proyecto2026.BD.Datos.Entity;
 using Proyecto2026.Repositorio.Repositorios;
 using Proyecto2026.Shared.DTO;
 
-namespace Proyecto2026.Server.Controllers // Ajusta este namespace al de tu carpeta Controllers
+namespace Proyecto2026.Server.Controllers 
 {
     [Route("api/[controller]")]
     [ApiController]

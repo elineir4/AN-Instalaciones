@@ -51,6 +51,27 @@
                         </div>
                     </div>
 
+                    @if (trabajosCliente.Count > 0)
+                    {
+                        <!-- Select Trabajo / Obra (opcional) -->
+                        <div class="mb-3">
+                            <label for="selectTrabajoPago" class="form-label fw-semibold text-dark small mb-1">
+                                Obra / Trabajo asociado <span class="text-muted fw-normal">(opcional)</span>
+                            </label>
+                            <select id="selectTrabajoPago"
+                                    class="form-select"
+                                    value="@trabajoIdSeleccionado"
+                                    @onchange="OnTrabajoChanged"
+                                    disabled="@isEnviando">
+                                <option value="0">-- Pago general al saldo del cliente --</option>
+                                @foreach (var t in trabajosCliente)
+                                {
+                                    <option value="@t.Id">#TRB-@t.Id · @t.NombreObra (@FormatoMonedaHelper.FormatearMoneda(t.Presupuesto))</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
                     <!-- Input Monto Abonado -->
                     <div class="mb-3">
                         <label for="inputMonto" class="form-label fw-semibold text-dark small mb-1">
@@ -168,6 +189,8 @@
     private decimal montoAbonado = 0m;
     private string montoInputString = "";
     private string medioPago = "Efectivo";
+    private int trabajoIdSeleccionado = 0;
+    private List<TrabajoItem> trabajosCliente = new();
 
     private bool cargandoSaldo = false;
     private bool isEnviando = false;
@@ -194,6 +217,8 @@
             montoAbonado = 0m;
             montoInputString = "";
             medioPago = "Efectivo";
+            trabajoIdSeleccionado = 0;
+            trabajosCliente = new();
 
             await ConsultarSaldoActual();
         }
@@ -211,11 +236,14 @@
         cargandoSaldo = true;
         try
         {
-            // Consultamos GET /api/pagos/cliente/{id}
-            var resp = await Http.GetAsync<ClienteSaldoItem>($"api/pagos/cliente/{Cliente.Id}");
+            // Consultamos GET /api/pagos/cliente/{id} y los trabajos del cliente
+            var tCliente = Http.GetAsync<ClienteSaldoItem>($"api/pagos/cliente/{Cliente.Id}");
+            var tTrabajos = Http.GetAsync<List<TrabajoItem>>($"api/trabajos/cliente/{Cliente.Id}");
+            await Task.WhenAll(tCliente, tTrabajos);
+
+            var resp = await tCliente;
             if (resp.Error)
             {
-                // Si la consulta falla, utilizamos el saldo provisto por la lista
                 saldoActual = Cliente.SaldoPendiente;
             }
             else if (resp.Dato != null)
@@ -226,6 +254,11 @@
             {
                 saldoActual = Cliente.SaldoPendiente;
             }
+
+            var respTrabajos = await tTrabajos;
+            trabajosCliente = (!respTrabajos.Error && respTrabajos.Dato != null)
+                ? respTrabajos.Dato
+                : new();
         }
         catch
         {
@@ -267,6 +300,12 @@
 
         ValidarMonto();
         StateHasChanged();
+    }
+
+    private void OnTrabajoChanged(ChangeEventArgs e)
+    {
+        int.TryParse(e.Value?.ToString(), out trabajoIdSeleccionado);
+        errorServidor = null;
     }
 
     private void OnMedioPagoChanged(ChangeEventArgs e)
@@ -335,6 +374,7 @@
             var pagoDto = new PagoDTO
             {
                 ClienteId = clientePagado.Id,
+                TrabajoId = trabajoIdSeleccionado > 0 ? trabajoIdSeleccionado : null,
                 MontoAbonado = monto,
                 MedioPago = medio
             };

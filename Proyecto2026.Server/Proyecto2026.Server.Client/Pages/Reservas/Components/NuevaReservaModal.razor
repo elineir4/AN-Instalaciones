@@ -1,0 +1,382 @@
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Servicios.ServicioHTTP
+@using Proyecto2026.Shared.DTO
+@inject IHttpService Http
+
+@if (Visible)
+{
+    <div class="res-modal-backdrop" @onclick="Cerrar"></div>
+
+    <div class="res-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tituloModalReserva">
+        <div class="res-modal-content">
+            <div class="res-modal-header">
+                <div>
+                    <h5 class="res-modal-title" id="tituloModalReserva">
+                        @(EsEdicion ? $"Editar Reserva #{ReservaEditar!.Id}" : "Nueva Reserva")
+                    </h5>
+                    <span class="res-modal-subtitle">Los campos marcados con * son obligatorios.</span>
+                </div>
+                <button type="button" class="res-modal-close" @onclick="Cerrar" aria-label="Cerrar" disabled="@isEnviando">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="res-modal-body">
+                @if (!string.IsNullOrWhiteSpace(errorServidor))
+                {
+                    <div class="res-alert-error" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        <span>@errorServidor</span>
+                    </div>
+                }
+
+                <div class="row g-3">
+                    <!-- Cliente -->
+                    <div class="col-12">
+                        <label for="resCliente" class="res-label">
+                            Cliente <span class="text-danger">*</span>
+                        </label>
+                        <select id="resCliente"
+                                class="res-input @(errorCliente != null ? "is-invalid" : "")"
+                                value="@clienteIdSeleccionado"
+                                @onchange="OnClienteChanged"
+                                disabled="@isEnviando">
+                            <option value="0">Seleccionar cliente...</option>
+                            @foreach (var c in Clientes)
+                            {
+                                <option value="@c.Id">@c.NombreCompleto</option>
+                            }
+                        </select>
+                        @if (errorCliente != null)
+                        {
+                            <div class="res-field-error">@errorCliente</div>
+                        }
+                    </div>
+
+                    <!-- Motivo / Descripción -->
+                    <div class="col-12">
+                        <label for="resDescripcion" class="res-label">
+                            Motivo / Servicio a realizar <span class="text-danger">*</span>
+                        </label>
+                        <input id="resDescripcion"
+                               type="text"
+                               list="motivosSugeridos"
+                               class="res-input @(errorDescripcion != null ? "is-invalid" : "")"
+                               placeholder="Ej: Inspección de Cañerías Gas, Relevamiento Presupuesto..."
+                               autocomplete="off"
+                               value="@descripcion"
+                               @oninput="OnDescripcionInput"
+                               disabled="@isEnviando" />
+                        <datalist id="motivosSugeridos">
+                            <option value="Inspección de Cañerías Gas" />
+                            <option value="Prueba de Hermeticidad" />
+                            <option value="Relevamiento Presupuesto" />
+                            <option value="Instalación Termotanque Solar" />
+                            <option value="Conexión Sanitaria Obra" />
+                            <option value="Calibración Regulador Gas" />
+                        </datalist>
+                        @if (errorDescripcion != null)
+                        {
+                            <div class="res-field-error">@errorDescripcion</div>
+                        }
+                    </div>
+
+                    <!-- Fecha y Hora -->
+                    <div class="col-12 col-sm-6">
+                        <label for="resFecha" class="res-label">
+                            Fecha del turno <span class="text-danger">*</span>
+                        </label>
+                        <input id="resFecha"
+                               type="date"
+                               class="res-input @(errorFecha != null ? "is-invalid" : "")"
+                               value="@fechaTexto"
+                               @onchange="OnFechaChanged"
+                               disabled="@isEnviando" />
+                    </div>
+
+                    <div class="col-12 col-sm-6">
+                        <label for="resHora" class="res-label">Hora</label>
+                        <input id="resHora"
+                               type="time"
+                               class="res-input"
+                               value="@horaTexto"
+                               @onchange="OnHoraChanged"
+                               disabled="@isEnviando" />
+                    </div>
+
+                    @if (errorFecha != null)
+                    {
+                        <div class="col-12">
+                            <div class="res-field-error mt-0">@errorFecha</div>
+                        </div>
+                    }
+
+                    <!-- Estado y Monto (opcional para trabajos chicos) -->
+                    <div class="col-12 col-sm-6">
+                        <label for="resEstado" class="res-label">Estado</label>
+                        <select id="resEstado"
+                                class="res-input"
+                                value="@estado"
+                                @onchange="OnEstadoChanged"
+                                disabled="@isEnviando">
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Confirmada">Confirmada</option>
+                            <option value="En Curso">En Curso</option>
+                            <option value="Completada">Completada</option>
+                            <option value="Cancelada">Cancelada</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-sm-6">
+                        <label for="resMonto" class="res-label">Monto (opcional · pedido chico)</label>
+                        <div class="res-input-group">
+                            <span class="res-input-prefix">$</span>
+                            <input id="resMonto"
+                                   type="number"
+                                   step="0.01"
+                                   min="0"
+                                   placeholder="0.00"
+                                   class="res-input res-input-with-prefix @(errorMonto != null ? "is-invalid" : "")"
+                                   value="@montoTexto"
+                                   @oninput="OnMontoInput"
+                                   disabled="@isEnviando" />
+                        </div>
+                        @if (errorMonto != null)
+                        {
+                            <div class="res-field-error">@errorMonto</div>
+                        }
+                    </div>
+                    <div class="col-12">
+                        <div class="small text-muted">
+                            Si el pedido es chico y no pasa a Obras, al marcarlo <strong>Completada</strong> su monto se sumará automáticamente al saldo del cliente.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="res-modal-footer">
+                <button type="button" class="res-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
+                    Cancelar
+                </button>
+                <button type="button" class="res-btn-primary" @onclick="Guardar" disabled="@isEnviando">
+                    @if (isEnviando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+                        <span>@(EsEdicion ? "Guardar Cambios" : "Crear Reserva")</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public ReservaDTO? ReservaEditar { get; set; }
+    [Parameter] public List<TrabajoClienteItem> Clientes { get; set; } = new();
+    [Parameter] public EventCallback<string> OnReservaGuardada { get; set; }
+
+    private bool EsEdicion => ReservaEditar != null;
+    private bool prevVisible;
+    private int? prevReservaId;
+
+    private int clienteIdSeleccionado;
+    private string descripcion = string.Empty;
+    private string fechaTexto = DateTime.Today.ToString("yyyy-MM-dd");
+    private string horaTexto = "09:00";
+    private string estado = "Pendiente";
+    private string montoTexto = "";
+
+    private string? errorCliente;
+    private string? errorDescripcion;
+    private string? errorFecha;
+    private string? errorMonto;
+    private string? errorServidor;
+    private bool isEnviando;
+
+    protected override void OnParametersSet()
+    {
+        var currentId = ReservaEditar?.Id;
+        if (Visible && (!prevVisible || prevReservaId != currentId))
+        {
+            InicializarFormulario();
+        }
+        prevVisible = Visible;
+        prevReservaId = currentId;
+    }
+
+    private void InicializarFormulario()
+    {
+        errorCliente = null;
+        errorDescripcion = null;
+        errorFecha = null;
+        errorMonto = null;
+        errorServidor = null;
+        isEnviando = false;
+
+        if (ReservaEditar != null)
+        {
+            clienteIdSeleccionado = ReservaEditar.ClienteId;
+            descripcion = ReservaEditar.Descripcion;
+            fechaTexto = ReservaEditar.FechaInicio.ToString("yyyy-MM-dd");
+            horaTexto = ReservaEditar.FechaInicio.ToString("HH:mm");
+            estado = string.IsNullOrWhiteSpace(ReservaEditar.Estado) ? "Pendiente" : ReservaEditar.Estado;
+            montoTexto = ReservaEditar.Monto > 0
+                ? ReservaEditar.Monto.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
+                : "";
+        }
+        else
+        {
+            clienteIdSeleccionado = 0;
+            descripcion = string.Empty;
+            fechaTexto = DateTime.Today.ToString("yyyy-MM-dd");
+            horaTexto = "09:00";
+            estado = "Pendiente";
+            montoTexto = "";
+        }
+    }
+
+    private void OnClienteChanged(ChangeEventArgs e)
+    {
+        int.TryParse(e.Value?.ToString(), out clienteIdSeleccionado);
+        errorCliente = null;
+        errorServidor = null;
+    }
+
+    private void OnDescripcionInput(ChangeEventArgs e)
+    {
+        descripcion = e.Value?.ToString() ?? string.Empty;
+        errorDescripcion = null;
+        errorServidor = null;
+    }
+
+    private void OnFechaChanged(ChangeEventArgs e)
+    {
+        fechaTexto = e.Value?.ToString() ?? DateTime.Today.ToString("yyyy-MM-dd");
+        errorFecha = null;
+        errorServidor = null;
+    }
+
+    private void OnHoraChanged(ChangeEventArgs e)
+    {
+        horaTexto = e.Value?.ToString() ?? "09:00";
+        errorFecha = null;
+    }
+
+    private void OnEstadoChanged(ChangeEventArgs e)
+    {
+        estado = e.Value?.ToString() ?? "Pendiente";
+    }
+
+    private void OnMontoInput(ChangeEventArgs e)
+    {
+        montoTexto = e.Value?.ToString() ?? string.Empty;
+        errorMonto = null;
+        errorServidor = null;
+    }
+
+    private async Task Guardar()
+    {
+        if (isEnviando) return;
+
+        errorCliente = null;
+        errorDescripcion = null;
+        errorFecha = null;
+        errorMonto = null;
+        errorServidor = null;
+
+        if (clienteIdSeleccionado <= 0)
+            errorCliente = "Debe seleccionar un cliente.";
+
+        if (string.IsNullOrWhiteSpace(descripcion))
+            errorDescripcion = "El motivo o servicio es obligatorio.";
+
+        if (!DateTime.TryParse(fechaTexto, out var fecha))
+            errorFecha = "La fecha no es válida.";
+
+        if (!TimeSpan.TryParse(horaTexto, out var hora))
+            hora = new TimeSpan(9, 0, 0);
+
+        decimal monto = 0m;
+        if (!string.IsNullOrWhiteSpace(montoTexto))
+        {
+            if (!decimal.TryParse(montoTexto.Replace(",", "."), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out monto) || monto < 0)
+                errorMonto = "Ingresá un monto válido mayor o igual a 0.";
+        }
+
+        if (errorCliente != null || errorDescripcion != null || errorFecha != null || errorMonto != null)
+            return;
+
+        var fechaCompleta = fecha.Date.Add(hora);
+        isEnviando = true;
+
+        try
+        {
+            if (EsEdicion)
+            {
+                var dto = new ActualizarReservaDTO
+                {
+                    Id = ReservaEditar!.Id,
+                    ClienteId = clienteIdSeleccionado,
+                    Descripcion = descripcion.Trim(),
+                    FechaInicio = fechaCompleta,
+                    Estado = estado,
+                    Monto = monto
+                };
+                var resp = await Http.PutAsync<ActualizarReservaDTO, ReservaDTO>($"api/Reservas/{ReservaEditar.Id}", dto);
+                if (resp.Error)
+                {
+                    errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+                    return;
+                }
+            }
+            else
+            {
+                var dto = new CrearReservaDTO
+                {
+                    ClienteId = clienteIdSeleccionado,
+                    Descripcion = descripcion.Trim(),
+                    FechaInicio = fechaCompleta,
+                    Estado = estado,
+                    Monto = monto
+                };
+                var resp = await Http.PostAsync<CrearReservaDTO, ReservaDTO>("api/Reservas", dto);
+                if (resp.Error)
+                {
+                    errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+                    return;
+                }
+            }
+
+            var msg = EsEdicion
+                ? $"Se actualizó la reserva #{ReservaEditar!.Id}."
+                : $"Se registró la reserva \"{descripcion.Trim()}\".";
+
+            Visible = false;
+            await VisibleChanged.InvokeAsync(false);
+            await OnReservaGuardada.InvokeAsync(msg);
+        }
+        catch (Exception ex)
+        {
+            errorServidor = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isEnviando = false;
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isEnviando) return;
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}

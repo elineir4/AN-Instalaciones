@@ -21,6 +21,7 @@ public class ClienteController : ControllerBase
     {
         try
         {
+            cliente.SaldoPendiente = 0m;
             var nuevoId = await repositorio.Insert(cliente);
             return Ok(nuevoId);
         }

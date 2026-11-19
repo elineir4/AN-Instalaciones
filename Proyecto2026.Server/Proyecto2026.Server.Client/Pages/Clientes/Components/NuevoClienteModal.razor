@@ -105,30 +105,6 @@
                             <div class="text-danger small mt-1">@errorEmail</div>
                         }
                     </div>
-
-                    <!-- Monto a abonar (deuda inicial del cliente, opcional, por defecto 0) -->
-                    <div class="col-12">
-                        <label for="nuevoClienteSaldo" class="form-label fw-semibold text-dark small mb-1">
-                            Monto a abonar
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light fw-bold text-secondary">$</span>
-                            <input id="nuevoClienteSaldo"
-                                   type="number"
-                                   step="0.01"
-                                   min="0"
-                                   class="form-control @(errorSaldo != null ? "is-invalid" : "")"
-                                   placeholder="0.00"
-                                   autocomplete="off"
-                                   value="@saldoInputString"
-                                   @oninput="OnSaldoInput"
-                                   disabled="@isEnviando" />
-                        </div>
-                        @if (errorSaldo != null)
-                        {
-                            <div class="text-danger small mt-1">@errorSaldo</div>
-                        }
-                    </div>
                 </div>
             </div>
 
@@ -170,14 +146,11 @@
     private string apellido = "";
     private string telefono = "";
     private string email = "";
-    private string saldoInputString = "";
-    private decimal saldoPendiente = 0m;
 
     private string? errorNombre;
     private string? errorApellido;
     private string? errorTelefono;
     private string? errorEmail;
-    private string? errorSaldo;
     private string? errorServidor;
 
     private bool isEnviando = false;
@@ -192,13 +165,10 @@
             apellido = "";
             telefono = "";
             email = "";
-            saldoInputString = "";
-            saldoPendiente = 0m;
             errorNombre = null;
             errorApellido = null;
             errorTelefono = null;
             errorEmail = null;
-            errorSaldo = null;
             errorServidor = null;
             isEnviando = false;
         }
@@ -230,29 +200,6 @@
         errorEmail = null;
     }
 
-    private void OnSaldoInput(ChangeEventArgs e)
-    {
-        saldoInputString = e.Value?.ToString() ?? "";
-        errorSaldo = null;
-
-        if (string.IsNullOrWhiteSpace(saldoInputString))
-        {
-            saldoPendiente = 0m;
-        }
-        else if (decimal.TryParse(saldoInputString, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-        {
-            saldoPendiente = parsed;
-        }
-        else if (decimal.TryParse(saldoInputString, out var parsedLocal))
-        {
-            saldoPendiente = parsedLocal;
-        }
-        else
-        {
-            errorSaldo = "Ingresá un monto numérico válido.";
-        }
-    }
-
     /// <summary>Validación en el front: obligatorios, email válido si se completa y teléfono con caracteres permitidos.</summary>
     private bool Validar()
     {
@@ -269,17 +216,7 @@
             ? "Ingresá un email válido."
             : null;
 
-        if (string.IsNullOrWhiteSpace(saldoInputString))
-        {
-            saldoPendiente = 0m;
-            errorSaldo = null;
-        }
-        else if (saldoPendiente < 0)
-        {
-            errorSaldo = "El saldo pendiente no puede ser negativo.";
-        }
-
-        return errorNombre == null && errorApellido == null && errorTelefono == null && errorEmail == null && errorSaldo == null;
+        return errorNombre == null && errorApellido == null && errorTelefono == null && errorEmail == null;
     }
 
     private async Task Guardar()
@@ -305,7 +242,7 @@
                 Apellido = apellido.Trim(),
                 Telefono = string.IsNullOrWhiteSpace(telefono) ? null : telefono.Trim(),
                 Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
-                SaldoPendiente = saldoPendiente
+                SaldoPendiente = 0m
             };
 
             // POST /api/clientes/agregar → devuelve el int del id nuevo

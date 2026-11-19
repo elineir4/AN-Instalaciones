@@ -17,6 +17,23 @@ public class ReservaRepositorio : Repositorio<Reserva>, IReservaRepositorio
         this.context = context;
     }
 
+    public async Task<List<Reserva>> ObtenerTodasConClienteAsync()
+    {
+        return await context.Set<Reserva>()
+            .AsNoTracking()
+            .Include(r => r.Cliente)
+            .OrderByDescending(r => r.FechaInicio)
+            .ToListAsync();
+    }
+
+    // NUEVO: buscar una reserva por id (incluye el cliente)
+    public async Task<Reserva?> ObtenerPorIdAsync(int id)
+    {
+        return await context.Set<Reserva>()
+            .Include(r => r.Cliente)
+            .FirstOrDefaultAsync(r => r.Id == id);
+    }
+
     // Obtener todas las reservas de un cliente en específico
     public async Task<List<Reserva>> ObtenerPorClienteIdAsync(int clienteId)
     {

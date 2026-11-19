@@ -11,15 +11,18 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
     {
         private readonly ITrabajoRepositorio _repositorio;
         private readonly IClienteRepositorio _clienteRepositorio;
+        private readonly IPagoRepositorio1 _pagoRepositorio;
         private readonly IWebHostEnvironment _env;
 
         public TrabajosController(
             ITrabajoRepositorio repositorio,
             IClienteRepositorio clienteRepositorio,
+            IPagoRepositorio1 pagoRepositorio,
             IWebHostEnvironment env)
         {
             _repositorio = repositorio;
             _clienteRepositorio = clienteRepositorio;
+            _pagoRepositorio = pagoRepositorio;
             _env = env;
         }
 
@@ -71,8 +74,8 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
             if (dto.FechaFin.HasValue && dto.FechaFin.Value.Date < dto.FechaInicio.Date)
                 return BadRequest("La fecha de fin no puede ser anterior a la fecha de inicio.");
 
-            var clienteExiste = await _clienteRepositorio.Existe(dto.ClienteId);
-            if (!clienteExiste)
+            var cliente = await _clienteRepositorio.ObtenerPorIdAsync(dto.ClienteId);
+            if (cliente == null)
                 return BadRequest($"El cliente con ID {dto.ClienteId} no existe.");
 
             var trabajo = new Trabajo
@@ -87,6 +90,13 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
             };
 
             var creado = await _repositorio.Insert(trabajo);
+
+            if (creado.Presupuesto > 0)
+            {
+                cliente.SaldoPendiente += creado.Presupuesto;
+                await _clienteRepositorio.Update(cliente);
+            }
+
             var completo = await _repositorio.ObtenerPorIdConRelacionesAsync(creado.Id) ?? creado;
             return CreatedAtAction(nameof(GetById), new { id = creado.Id }, completo);
         }
@@ -111,9 +121,12 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
             if (trabajoExistente == null)
                 return NotFound($"No se encontró el trabajo con ID {id}.");
 
-            var clienteExiste = await _clienteRepositorio.Existe(dto.ClienteId);
-            if (!clienteExiste)
+            var clienteNuevo = await _clienteRepositorio.ObtenerPorIdAsync(dto.ClienteId);
+            if (clienteNuevo == null)
                 return BadRequest($"El cliente con ID {dto.ClienteId} no existe.");
+
+            var clienteAnteriorId = trabajoExistente.ClienteId;
+            var presupuestoAnterior = trabajoExistente.Presupuesto;
 
             trabajoExistente.NombreObra = dto.NombreObra.Trim();
             trabajoExistente.ClienteId = dto.ClienteId;
@@ -127,6 +140,31 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
             }
 
             await _repositorio.Update(trabajoExistente);
+
+            if (clienteAnteriorId == dto.ClienteId)
+            {
+                var diferencia = dto.Presupuesto - presupuestoAnterior;
+                if (diferencia != 0)
+                {
+                    clienteNuevo.SaldoPendiente = Math.Max(0m, clienteNuevo.SaldoPendiente + diferencia);
+                    await _clienteRepositorio.Update(clienteNuevo);
+                }
+            }
+            else
+            {
+                var clienteAnterior = await _clienteRepositorio.ObtenerPorIdAsync(clienteAnteriorId);
+                if (clienteAnterior != null && presupuestoAnterior > 0)
+                {
+                    clienteAnterior.SaldoPendiente = Math.Max(0m, clienteAnterior.SaldoPendiente - presupuestoAnterior);
+                    await _clienteRepositorio.Update(clienteAnterior);
+                }
+                if (dto.Presupuesto > 0)
+                {
+                    clienteNuevo.SaldoPendiente += dto.Presupuesto;
+                    await _clienteRepositorio.Update(clienteNuevo);
+                }
+            }
+
             var completo = await _repositorio.ObtenerPorIdConRelacionesAsync(id) ?? trabajoExistente;
             return Ok(completo);
         }
@@ -209,6 +247,28 @@ namespace Proyecto2026.Server.Controllers // Ajusta al namespace de tus Controll
             var trabajo = await _repositorio.ObtenerPorIdAsync(id);
             if (trabajo == null)
                 return NotFound($"No se encontró el trabajo con ID {id}.");
+
+            var pagosAsociados = (await _pagoRepositorio.Select())
+                .Where(p => p.TrabajoId == id)
+                .ToList();
+            var pagadoDeEsteTrabajo = pagosAsociados.Sum(p => p.MontoAbonado);
+
+            foreach (var p in pagosAsociados)
+            {
+                p.TrabajoId = null;
+                await _pagoRepositorio.Update(p);
+            }
+
+            var saldoARestar = Math.Max(0m, trabajo.Presupuesto - pagadoDeEsteTrabajo);
+            if (saldoARestar > 0)
+            {
+                var cliente = await _clienteRepositorio.ObtenerPorIdAsync(trabajo.ClienteId);
+                if (cliente != null)
+                {
+                    cliente.SaldoPendiente = Math.Max(0m, cliente.SaldoPendiente - saldoARestar);
+                    await _clienteRepositorio.Update(cliente);
+                }
+            }
 
             if (!string.IsNullOrEmpty(trabajo.Planos))
             {

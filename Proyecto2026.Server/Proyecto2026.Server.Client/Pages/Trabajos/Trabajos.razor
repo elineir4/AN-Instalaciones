@@ -6,6 +6,7 @@
 @using Proyecto2026.Servicios.ServicioHTTP
 @using Proyecto2026.Shared.DTO
 @inject IHttpService Http
+@inject NavigationManager Nav
 @implements IDisposable
 
 <PageTitle>Trabajos y Planos - AN Instalaciones</PageTitle>
@@ -254,6 +255,18 @@
                                     <!-- Presupuesto -->
                                     <td>
                                         <span class="trb-monto">@FormatoMonedaHelper.FormatearMoneda(trabajo.Presupuesto)</span>
+                                        @if (pagadoPorTrabajo.TryGetValue(trabajo.Id, out var pagado) && pagado > 0)
+                                        {
+                                            var restante = Math.Max(0m, trabajo.Presupuesto - pagado);
+                                            if (restante == 0 && trabajo.Presupuesto > 0)
+                                            {
+                                                <div class="trb-pago-saldado">✓ Saldado</div>
+                                            }
+                                            else
+                                            {
+                                                <div class="trb-pago-restante">Resta: @FormatoMonedaHelper.FormatearMoneda(restante)</div>
+                                            }
+                                        }
                                     </td>
 
                                     <!-- Fechas -->
@@ -440,6 +453,7 @@
 
     private List<TrabajoItem> listaTrabajos = new();
     private List<TrabajoClienteItem> listaClientes = new();
+    private Dictionary<int, decimal> pagadoPorTrabajo = new();
     private bool cargando = true;
     private string? errorCarga;
     private bool sesionExpirada;
@@ -559,11 +573,13 @@
         {
             var tTrabajos = Http.GetAsync<List<TrabajoItem>>("api/trabajos");
             var tClientes = Http.GetAsync<List<TrabajoClienteItem>>("api/clientes/obtenerclientes");
+            var tResumenPagos = Http.GetAsync<Dictionary<int, decimal>>("api/pagos/resumen-trabajos");
 
-            await Task.WhenAll(tTrabajos, tClientes);
+            await Task.WhenAll(tTrabajos, tClientes, tResumenPagos);
 
             var respTrabajos = await tTrabajos;
             var respClientes = await tClientes;
+            var respResumen = await tResumenPagos;
 
             if (respTrabajos.Error)
             {
@@ -583,6 +599,10 @@
                     .ThenBy(c => c.Apellido)
                     .ToList();
             }
+
+            pagadoPorTrabajo = (!respResumen.Error && respResumen.Dato != null)
+                ? respResumen.Dato
+                : new();
 
             if (paginaActual > TotalPaginas)
                 paginaActual = TotalPaginas;

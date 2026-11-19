@@ -45,6 +45,21 @@ public class ClienteSaldoItem
     [JsonPropertyName("saldoPendiente")]
     public decimal SaldoPendiente { get; set; }
 
+    [JsonPropertyName("ultimoPagoFecha")]
+    public DateTime? UltimoPagoFecha { get; set; }
+
+    [JsonPropertyName("fechaProximoPago")]
+    public DateTime? FechaProximoPago { get; set; }
+
+    [JsonPropertyName("diasSinPagar")]
+    public int DiasSinPagar { get; set; }
+
+    [JsonPropertyName("semanasAtraso")]
+    public int SemanasAtraso { get; set; }
+
+    [JsonPropertyName("estadoSemanal")]
+    public string EstadoSemanal { get; set; } = "Al día";
+
     [JsonIgnore]
     public string NombreCompleto
     {

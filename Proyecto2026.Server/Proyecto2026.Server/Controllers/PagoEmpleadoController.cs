@@ -27,8 +27,47 @@ public class PagoEmpleadoController : ControllerBase
     [HttpGet("lista/pendientes")]
     public async Task<ActionResult> ListaEmpleadosConPagosPendientes()
     {
-        var lista = await repositorio.ObtenerEmpleadosConPagosPendientes();
-        return Ok(lista);
+        var empleados = await repositorio.ObtenerEmpleadosConPagosPendientes();
+        var pagos = await repositorio.Select();
+
+        var hoy = DateTime.Today;
+        var diff = (7 + (hoy.DayOfWeek - DayOfWeek.Monday)) % 7;
+        var inicioSemana = hoy.AddDays(-diff).Date;
+
+        var pagosSemanaPorEmpleado = pagos
+            .Where(p => p.FechaPago >= inicioSemana)
+            .GroupBy(p => p.EmpleadoId)
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.Monto));
+
+        var ultimoPagoPorEmpleado = pagos
+            .GroupBy(p => p.EmpleadoId)
+            .ToDictionary(g => g.Key, g => g.Max(p => p.FechaPago));
+
+        var pendientes = empleados
+            .Select(e =>
+            {
+                pagosSemanaPorEmpleado.TryGetValue(e.Id, out var pagadoSemana);
+                ultimoPagoPorEmpleado.TryGetValue(e.Id, out var ultimoPago);
+                var pendiente = Math.Max(0m, e.Salario - pagadoSemana);
+
+                return new
+                {
+                    e.Id,
+                    e.Nombre,
+                    e.Apellido,
+                    e.Telefono,
+                    e.Salario,
+                    PagadoEstaSemana = pagadoSemana,
+                    PendienteEstaSemana = pendiente,
+                    UltimoPagoFecha = ultimoPago != default ? ultimoPago : (DateTime?)null,
+                    EstadoSemanal = pendiente == 0 ? "Al día esta semana" : "Pendiente esta semana"
+                };
+            })
+            .Where(x => x.PendienteEstaSemana > 0)
+            .OrderByDescending(x => x.PendienteEstaSemana)
+            .ToList();
+
+        return Ok(pendientes);
     }
 
     [HttpGet("empleado/{id}")]

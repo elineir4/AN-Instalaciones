@@ -1,0 +1,834 @@
+@page "/reservas"
+@using System.Net.Http.Json
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Server.Client.Models
+@using Proyecto2026.Server.Client.Pages.Pagos.Components
+@using Proyecto2026.Server.Client.Pages.Reservas.Components
+@using Proyecto2026.Servicios.ServicioHTTP
+@using Proyecto2026.Shared.DTO
+@inject IHttpService Http
+@inject HttpClient HttpClient
+@implements IDisposable
+
+<PageTitle>Reservas - AN Instalaciones</PageTitle>
+
+<div class="res-page">
+    <!-- Encabezado -->
+    <div class="res-header">
+        <div>
+            <div class="d-flex align-items-center gap-3 mb-1">
+                <h1 class="res-title">Reservas</h1>
+                @if (!cargando && string.IsNullOrEmpty(errorCarga))
+                {
+                    <span class="res-count-badge">
+                        @(listaReservas.Count == 1 ? "1 registrada" : $"{listaReservas.Count} registradas")
+                    </span>
+                }
+            </div>
+            <p class="res-subtitle">
+                Gestión y agenda de visitas técnicas, inspecciones de obra y turnos de instalación.
+            </p>
+        </div>
+
+        <div>
+            <button type="button"
+                    class="res-btn-primary"
+                    disabled="@cargando"
+                    @onclick="AbrirModalNuevo">
+                <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                <span>+ Nueva Reserva</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Error de carga -->
+    @if (!cargando && !string.IsNullOrWhiteSpace(errorCarga))
+    {
+        <div class="res-error-card">
+            <span class="material-symbols-outlined text-danger" style="font-size: 32px;">warning</span>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold text-danger mb-1">Error al consultar las reservas</h6>
+                <p class="text-muted small mb-2">@errorCarga</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger btn-sm" @onclick="() => CargarDatos(mostrarSpinner: true)">
+                        Reintentar
+                    </button>
+                    @if (sesionExpirada)
+                    {
+                        <a href="/login" class="btn btn-outline-danger btn-sm">
+                            Ir a Iniciar Sesión
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Tarjeta de Filtros -->
+    <section class="res-filter-card">
+        <div class="res-filter-row">
+            <div class="res-search-wrap">
+                <span class="material-symbols-outlined res-search-icon">search</span>
+                <input type="text"
+                       class="res-search-input"
+                       placeholder="Buscar por cliente, motivo o estado..."
+                       aria-label="Buscar por cliente, motivo o estado"
+                       value="@terminoBusqueda"
+                       @oninput="OnBusquedaInput" />
+                @if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+                {
+                    <button type="button" class="res-clear-search" @onclick="LimpiarBusqueda" title="Limpiar búsqueda">
+                        ✕
+                    </button>
+                }
+            </div>
+
+            <div class="res-date-range">
+                <input type="date"
+                       aria-label="Fecha desde"
+                       class="res-date-input"
+                       value="@fechaDesdeTexto"
+                       @onchange="OnFechaDesdeChanged" />
+                <span class="text-muted small">a</span>
+                <input type="date"
+                       aria-label="Fecha hasta"
+                       class="res-date-input"
+                       value="@fechaHastaTexto"
+                       @onchange="OnFechaHastaChanged" />
+            </div>
+
+            <select aria-label="Filtrar por estado"
+                    class="res-select"
+                    value="@filtroEstado"
+                    @onchange="OnEstadoFilterChanged">
+                <option value="">Todos los estados</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Confirmada">Confirmada</option>
+                <option value="En Curso">En Curso</option>
+                <option value="Completada">Completada</option>
+                <option value="Cancelada">Cancelada</option>
+            </select>
+
+            <button type="button"
+                    class="res-btn-icon"
+                    title="Limpiar filtros"
+                    disabled="@(!HayFiltrosActivos)"
+                    @onclick="LimpiarFiltros">
+                <span class="material-symbols-outlined" style="font-size: 19px;">filter_list_off</span>
+            </button>
+        </div>
+
+        <div class="res-quick-row">
+            <div class="res-quick-pills">
+                <span class="res-quick-label">Filtro rápido:</span>
+                <button type="button"
+                        class="res-quick-pill @(filtroRapido == "mes" ? "active" : "")"
+                        @onclick='() => AplicarFiltroRapido("mes")'>
+                    Este mes
+                </button>
+                <button type="button"
+                        class="res-quick-pill @(filtroRapido == "7dias" ? "active" : "")"
+                        @onclick='() => AplicarFiltroRapido("7dias")'>
+                    Próximos 7 días
+                </button>
+                <button type="button"
+                        class="res-quick-pill @(filtroRapido == "semana" ? "active" : "")"
+                        @onclick='() => AplicarFiltroRapido("semana")'>
+                    Semana en curso
+                </button>
+                <button type="button"
+                        class="res-quick-pill @(filtroRapido == "todas" ? "active" : "")"
+                        @onclick='() => AplicarFiltroRapido("todas")'>
+                    Ver todas
+                </button>
+            </div>
+
+            <div class="res-total-info">
+                Total: <strong>@ReservasFiltradas.Count turnos programados</strong>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tabla Principal -->
+    <section class="res-table-card">
+        @if (cargando)
+        {
+            <div class="p-5 text-center">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <div class="text-secondary small fw-medium">Cargando reservas...</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 res-table">
+                    <thead class="res-thead">
+                        <tr>
+                            <th scope="col">CLIENTE</th>
+                            <th scope="col">FECHA Y HORA</th>
+                            <th scope="col">MOTIVO / SERVICIO</th>
+                            <th scope="col">TRABAJO ASOCIADO</th>
+                            <th scope="col">ESTADO</th>
+                            <th scope="col" class="text-end">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ReservasFiltradas.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    @if (HayFiltrosActivos)
+                                    {
+                                        <div class="res-empty-state">
+                                            <div class="res-empty-icon">
+                                                <span class="material-symbols-outlined" style="font-size: 28px;">event_busy</span>
+                                            </div>
+                                            <h6 class="fw-bold text-dark mb-1">Sin resultados</h6>
+                                            <p class="text-muted small mb-3">No se encontraron reservas con los filtros seleccionados.</p>
+                                            <button type="button" class="res-btn-secondary btn-sm" @onclick="LimpiarFiltros">
+                                                Ver todas las reservas
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="res-empty-state">
+                                            <div class="res-empty-icon">
+                                                <span class="material-symbols-outlined" style="font-size: 28px;">event_available</span>
+                                            </div>
+                                            <h6 class="fw-bold text-dark mb-1">No hay reservas registradas</h6>
+                                            <p class="text-muted small mb-3">Agendá una visita técnica o turno de instalación para un cliente.</p>
+                                            <button type="button" class="res-btn-primary btn-sm" @onclick="AbrirModalNuevo">
+                                                + Nueva Reserva
+                                            </button>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var reserva in ReservasPaginadas)
+                            {
+                                <tr class="res-row" @key="reserva.Id">
+                                    <!-- Cliente -->
+                                    <td>
+                                        <div class="res-cliente-name">@(reserva.NombreCliente ?? $"Cliente #{reserva.ClienteId}")</div>
+                                        @if (!string.IsNullOrWhiteSpace(reserva.TelefonoCliente))
+                                        {
+                                            <div class="res-cliente-tel">
+                                                <span class="material-symbols-outlined" style="font-size: 13px;">call</span>
+                                                <span>@reserva.TelefonoCliente</span>
+                                            </div>
+                                        }
+                                    </td>
+
+                                    <!-- Fecha y Hora -->
+                                    <td>
+                                        <div class="res-fecha-row">
+                                            <span class="material-symbols-outlined res-fecha-icon">schedule</span>
+                                            <span>@reserva.FechaInicio.ToString("dd/MM/yyyy - HH:mm") hs</span>
+                                        </div>
+                                        <div class="res-fecha-sub">
+                                            Reserva #@reserva.Id
+                                        </div>
+                                    </td>
+
+                                    <!-- Motivo / Servicio -->
+                                    <td>
+                                        <span class="res-motivo-pill">
+                                            <span class="material-symbols-outlined" style="font-size: 15px;">build</span>
+                                            <span>@(string.IsNullOrWhiteSpace(reserva.Descripcion) ? "Visita técnica" : reserva.Descripcion)</span>
+                                        </span>
+                                        @if (reserva.Monto > 0)
+                                        {
+                                            <div class="small text-muted mt-1">
+                                                Monto: <strong class="text-dark">@FormatoMonedaHelper.FormatearMoneda(reserva.Monto)</strong>
+                                                @if (reserva.MontoSumadoAlSaldo)
+                                                {
+                                                    <span class="text-success ms-1">· Sumado al saldo</span>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+
+                                    <!-- Trabajo Asociado -->
+                                    <td>
+                                        @if (reserva.TrabajoId.HasValue)
+                                        {
+                                            <a href="trabajos" class="res-trabajo-link" title="Ver en Trabajos y Planos">
+                                                <span class="material-symbols-outlined" style="font-size: 15px;">architecture</span>
+                                                <span>#TRB-@reserva.TrabajoId</span>
+                                            </a>
+                                        }
+                                        else if (!string.Equals(reserva.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <button type="button"
+                                                    class="res-btn-convertir"
+                                                    title="Confirmar reserva y crear trabajo"
+                                                    @onclick="() => AbrirModalConvertir(reserva)">
+                                                <span class="material-symbols-outlined" style="font-size: 15px;">add_task</span>
+                                                <span>Pasar a Trabajo</span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+
+                                    <!-- Estado -->
+                                    <td>
+                                        <span class="res-status-badge @ClaseEstado(reserva.Estado)">
+                                            <span class="material-symbols-outlined" style="font-size: 14px;">@IconoEstado(reserva.Estado)</span>
+                                            <span>@reserva.Estado</span>
+                                        </span>
+                                    </td>
+
+                                    <!-- Acciones -->
+                                    <td class="text-end">
+                                        <div class="res-actions">
+                                            <button type="button"
+                                                    class="res-action-btn"
+                                                    title="Editar reserva"
+                                                    @onclick="() => AbrirModalEditar(reserva)">
+                                                <span class="material-symbols-outlined" style="font-size: 17px;">edit</span>
+                                            </button>
+                                            <button type="button"
+                                                    class="res-action-btn"
+                                                    title="Cambiar estado"
+                                                    @onclick="() => AbrirModalEstado(reserva)">
+                                                <span class="material-symbols-outlined" style="font-size: 17px;">swap_horiz</span>
+                                            </button>
+                                            <button type="button"
+                                                    class="res-action-btn res-action-delete"
+                                                    title="Eliminar reserva"
+                                                    @onclick="() => SolicitarEliminar(reserva)">
+                                                <span class="material-symbols-outlined" style="font-size: 17px;">delete</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-3 border-top">
+                <Paginador PaginaActual="@paginaActual"
+                           TotalPaginas="@TotalPaginas"
+                           TotalItems="@ReservasFiltradas.Count"
+                           ItemsPorPagina="@ItemsPorPagina"
+                           MostrarNavUnaPagina="true"
+                           TextoInfo="@TextoPaginador"
+                           OnPaginaCambiada="OnPaginaCambiada" />
+            </div>
+        }
+    </section>
+
+    <!-- Modal Nueva / Editar Reserva -->
+    <NuevaReservaModal @bind-Visible="mostrarModalReserva"
+                       ReservaEditar="@reservaEnEdicion"
+                       Clientes="@listaClientes"
+                       OnReservaGuardada="OnOperacionExitosa" />
+
+    <!-- Modal Convertir a Trabajo -->
+    <ConvertirTrabajoModal @bind-Visible="mostrarModalConvertir"
+                           Reserva="@reservaAConvertir"
+                           OnConvertida="OnOperacionExitosa" />
+
+    <!-- Modal Cambiar Estado -->
+    @if (mostrarModalEstado && reservaParaEstado != null)
+    {
+        <div class="res-modal-backdrop" @onclick="CerrarModalEstado"></div>
+        <div class="res-modal-dialog res-modal-dialog-sm" role="dialog" aria-modal="true" aria-labelledby="tituloCambiarEstado">
+            <div class="res-modal-content">
+                <div class="res-modal-header">
+                    <div>
+                        <h5 class="res-modal-title" id="tituloCambiarEstado">Cambiar Estado</h5>
+                        <span class="res-modal-subtitle">
+                            Reserva #@reservaParaEstado.Id · @(reservaParaEstado.NombreCliente ?? $"Cliente #{reservaParaEstado.ClienteId}")
+                        </span>
+                    </div>
+                    <button type="button" class="res-modal-close" @onclick="CerrarModalEstado" disabled="@cambiandoEstado">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="res-modal-body">
+                    <label for="resNuevoEstadoSelect" class="res-label">Seleccioná el nuevo estado</label>
+                    <select id="resNuevoEstadoSelect"
+                            class="res-input"
+                            value="@nuevoEstadoSeleccionado"
+                            @onchange="OnNuevoEstadoChanged"
+                            disabled="@cambiandoEstado">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Confirmada">Confirmada</option>
+                        <option value="En Curso">En Curso</option>
+                        <option value="Completada">Completada</option>
+                        <option value="Cancelada">Cancelada</option>
+                    </select>
+                </div>
+                <div class="res-modal-footer">
+                    <button type="button" class="res-btn-secondary" @onclick="CerrarModalEstado" disabled="@cambiandoEstado">
+                        Cancelar
+                    </button>
+                    <button type="button" class="res-btn-primary" @onclick="ConfirmarCambioEstado" disabled="@cambiandoEstado">
+                        @(cambiandoEstado ? "Guardando..." : "Guardar Estado")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Modal Confirmar Eliminación -->
+    @if (mostrarModalEliminar && reservaAEliminar != null)
+    {
+        <div class="res-modal-backdrop" @onclick="CancelarEliminar"></div>
+        <div class="res-modal-dialog res-modal-dialog-sm" role="dialog" aria-modal="true" aria-labelledby="tituloEliminarReserva">
+            <div class="res-modal-content">
+                <div class="res-modal-header">
+                    <div>
+                        <h5 class="res-modal-title" id="tituloEliminarReserva">Eliminar reserva</h5>
+                        <span class="res-modal-subtitle">Esta acción no se puede deshacer.</span>
+                    </div>
+                    <button type="button" class="res-modal-close" @onclick="CancelarEliminar" disabled="@eliminando">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="res-modal-body">
+                    <p class="mb-0 text-secondary">
+                        ¿Confirmás que querés eliminar la reserva <strong class="text-dark">#@reservaAEliminar.Id</strong>
+                        de <strong class="text-dark">@(reservaAEliminar.NombreCliente ?? $"Cliente #{reservaAEliminar.ClienteId}")</strong>?
+                    </p>
+                </div>
+                <div class="res-modal-footer">
+                    <button type="button" class="res-btn-secondary" @onclick="CancelarEliminar" disabled="@eliminando">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger px-4 fw-semibold" @onclick="ConfirmarEliminar" disabled="@eliminando">
+                        @(eliminando ? "Eliminando..." : "Eliminar")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Toast -->
+    <ToastSimple @bind-Visible="mostrarToast"
+                 Titulo="@tituloToast"
+                 Mensaje="@mensajeToast"
+                 EsError="@esErrorToast" />
+</div>
+
+@code {
+    private const int ItemsPorPagina = 6;
+
+    private List<ReservaDTO> listaReservas = new();
+    private List<TrabajoClienteItem> listaClientes = new();
+    private bool cargando = true;
+    private string? errorCarga;
+    private bool sesionExpirada;
+
+    private string terminoBusqueda = string.Empty;
+    private string fechaDesdeTexto = string.Empty;
+    private string fechaHastaTexto = string.Empty;
+    private string filtroEstado = string.Empty;
+    private string filtroRapido = "todas";
+    private int paginaActual = 1;
+
+    private CancellationTokenSource? ctsBusqueda;
+
+    // Modales
+    private bool mostrarModalReserva;
+    private ReservaDTO? reservaEnEdicion;
+
+    private bool mostrarModalConvertir;
+    private ReservaDTO? reservaAConvertir;
+
+    private bool mostrarModalEstado;
+    private ReservaDTO? reservaParaEstado;
+    private string nuevoEstadoSeleccionado = "Pendiente";
+    private bool cambiandoEstado;
+
+    private bool mostrarModalEliminar;
+    private ReservaDTO? reservaAEliminar;
+    private bool eliminando;
+
+    // Toast
+    private bool mostrarToast;
+    private string tituloToast = string.Empty;
+    private string mensajeToast = string.Empty;
+    private bool esErrorToast;
+
+    private bool HayFiltrosActivos =>
+        !string.IsNullOrWhiteSpace(terminoBusqueda) ||
+        !string.IsNullOrWhiteSpace(fechaDesdeTexto) ||
+        !string.IsNullOrWhiteSpace(fechaHastaTexto) ||
+        !string.IsNullOrWhiteSpace(filtroEstado);
+
+    private List<ReservaDTO> ReservasFiltradas
+    {
+        get
+        {
+            IEnumerable<ReservaDTO> query = listaReservas;
+
+            if (!string.IsNullOrWhiteSpace(terminoBusqueda))
+            {
+                var q = FormatoMonedaHelper.RemoverTildes(terminoBusqueda.Trim()).ToLowerInvariant();
+                query = query.Where(r =>
+                    FormatoMonedaHelper.RemoverTildes(r.NombreCliente ?? string.Empty).ToLowerInvariant().Contains(q) ||
+                    FormatoMonedaHelper.RemoverTildes(r.Descripcion).ToLowerInvariant().Contains(q) ||
+                    FormatoMonedaHelper.RemoverTildes(r.Estado).ToLowerInvariant().Contains(q) ||
+                    $"#{r.Id}".Contains(q));
+            }
+
+            if (DateTime.TryParse(fechaDesdeTexto, out var desde))
+            {
+                query = query.Where(r => r.FechaInicio.Date >= desde.Date);
+            }
+
+            if (DateTime.TryParse(fechaHastaTexto, out var hasta))
+            {
+                query = query.Where(r => r.FechaInicio.Date <= hasta.Date);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtroEstado))
+            {
+                query = query.Where(r => string.Equals(r.Estado, filtroEstado, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(ReservasFiltradas.Count / (double)ItemsPorPagina));
+
+    private List<ReservaDTO> ReservasPaginadas
+    {
+        get
+        {
+            var paginaValida = Math.Min(paginaActual, TotalPaginas);
+            return ReservasFiltradas
+                .Skip((paginaValida - 1) * ItemsPorPagina)
+                .Take(ItemsPorPagina)
+                .ToList();
+        }
+    }
+
+    private string TextoPaginador
+    {
+        get
+        {
+            var total = ReservasFiltradas.Count;
+            if (total == 0) return "Sin reservas para mostrar";
+            var paginaValida = Math.Min(paginaActual, TotalPaginas);
+            var desde = ((paginaValida - 1) * ItemsPorPagina) + 1;
+            var hasta = Math.Min(paginaValida * ItemsPorPagina, total);
+            return $"Mostrando {desde} a {hasta} de {total} reservas";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos(mostrarSpinner: true);
+    }
+
+    private async Task CargarDatos(bool mostrarSpinner)
+    {
+        if (mostrarSpinner)
+            cargando = true;
+
+        errorCarga = null;
+        sesionExpirada = false;
+
+        try
+        {
+            var tReservas = Http.GetAsync<List<ReservaDTO>>("api/Reservas");
+            var tClientes = Http.GetAsync<List<TrabajoClienteItem>>("api/clientes/obtenerclientes");
+
+            await Task.WhenAll(tReservas, tClientes);
+
+            var respReservas = await tReservas;
+            var respClientes = await tClientes;
+
+            if (respReservas.Error)
+            {
+                sesionExpirada = respReservas.Response?.StatusCode == System.Net.HttpStatusCode.Unauthorized;
+                errorCarga = await HttpErrorHelper.ObtenerMensajeError(respReservas);
+                listaReservas = new();
+            }
+            else
+            {
+                listaReservas = respReservas.Dato ?? new();
+            }
+
+            if (!respClientes.Error && respClientes.Dato != null)
+            {
+                listaClientes = respClientes.Dato
+                    .OrderBy(c => c.Nombre)
+                    .ThenBy(c => c.Apellido)
+                    .ToList();
+            }
+
+            if (paginaActual > TotalPaginas)
+                paginaActual = TotalPaginas;
+        }
+        catch (Exception ex)
+        {
+            errorCarga = $"No se pudo conectar con el servidor: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task OnBusquedaInput(ChangeEventArgs e)
+    {
+        terminoBusqueda = e.Value?.ToString() ?? string.Empty;
+
+        ctsBusqueda?.Cancel();
+        ctsBusqueda?.Dispose();
+        ctsBusqueda = new CancellationTokenSource();
+        var token = ctsBusqueda.Token;
+
+        try
+        {
+            await Task.Delay(200, token);
+            paginaActual = 1;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private void LimpiarBusqueda()
+    {
+        terminoBusqueda = string.Empty;
+        paginaActual = 1;
+    }
+
+    private void OnFechaDesdeChanged(ChangeEventArgs e)
+    {
+        fechaDesdeTexto = e.Value?.ToString() ?? string.Empty;
+        filtroRapido = string.Empty;
+        paginaActual = 1;
+    }
+
+    private void OnFechaHastaChanged(ChangeEventArgs e)
+    {
+        fechaHastaTexto = e.Value?.ToString() ?? string.Empty;
+        filtroRapido = string.Empty;
+        paginaActual = 1;
+    }
+
+    private void OnEstadoFilterChanged(ChangeEventArgs e)
+    {
+        filtroEstado = e.Value?.ToString() ?? string.Empty;
+        paginaActual = 1;
+    }
+
+    private void AplicarFiltroRapido(string modo)
+    {
+        filtroRapido = modo;
+        var hoy = DateTime.Today;
+
+        switch (modo)
+        {
+            case "mes":
+                var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
+                var finMes = inicioMes.AddMonths(1).AddDays(-1);
+                fechaDesdeTexto = inicioMes.ToString("yyyy-MM-dd");
+                fechaHastaTexto = finMes.ToString("yyyy-MM-dd");
+                break;
+            case "7dias":
+                fechaDesdeTexto = hoy.ToString("yyyy-MM-dd");
+                fechaHastaTexto = hoy.AddDays(7).ToString("yyyy-MM-dd");
+                break;
+            case "semana":
+                var diff = (7 + (hoy.DayOfWeek - DayOfWeek.Monday)) % 7;
+                var lunes = hoy.AddDays(-diff);
+                fechaDesdeTexto = lunes.ToString("yyyy-MM-dd");
+                fechaHastaTexto = lunes.AddDays(6).ToString("yyyy-MM-dd");
+                break;
+            default:
+                fechaDesdeTexto = string.Empty;
+                fechaHastaTexto = string.Empty;
+                break;
+        }
+        paginaActual = 1;
+    }
+
+    private void LimpiarFiltros()
+    {
+        terminoBusqueda = string.Empty;
+        fechaDesdeTexto = string.Empty;
+        fechaHastaTexto = string.Empty;
+        filtroEstado = string.Empty;
+        filtroRapido = "todas";
+        paginaActual = 1;
+    }
+
+    private void OnPaginaCambiada(int nuevaPagina)
+    {
+        paginaActual = nuevaPagina;
+    }
+
+    private void AbrirModalNuevo()
+    {
+        reservaEnEdicion = null;
+        mostrarModalReserva = true;
+    }
+
+    private void AbrirModalEditar(ReservaDTO reserva)
+    {
+        reservaEnEdicion = reserva;
+        mostrarModalReserva = true;
+    }
+
+    private void AbrirModalConvertir(ReservaDTO reserva)
+    {
+        reservaAConvertir = reserva;
+        mostrarModalConvertir = true;
+    }
+
+    private void AbrirModalEstado(ReservaDTO reserva)
+    {
+        reservaParaEstado = reserva;
+        nuevoEstadoSeleccionado = string.IsNullOrWhiteSpace(reserva.Estado) ? "Pendiente" : reserva.Estado;
+        mostrarModalEstado = true;
+    }
+
+    private void OnNuevoEstadoChanged(ChangeEventArgs e)
+    {
+        nuevoEstadoSeleccionado = e.Value?.ToString() ?? "Pendiente";
+    }
+
+    private void CerrarModalEstado()
+    {
+        if (cambiandoEstado) return;
+        mostrarModalEstado = false;
+        reservaParaEstado = null;
+    }
+
+    private async Task ConfirmarCambioEstado()
+    {
+        if (reservaParaEstado == null || cambiandoEstado) return;
+
+        if (string.Equals(nuevoEstadoSeleccionado, "Confirmada", StringComparison.OrdinalIgnoreCase))
+        {
+            var reserva = reservaParaEstado;
+            mostrarModalEstado = false;
+            reservaParaEstado = null;
+            AbrirModalConvertir(reserva);
+            return;
+        }
+
+        cambiandoEstado = true;
+        try
+        {
+            var resp = await HttpClient.PatchAsJsonAsync(
+                $"api/Reservas/{reservaParaEstado.Id}/estado",
+                new CambiarEstadoDTO { NuevoEstado = nuevoEstadoSeleccionado });
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                MostrarToast("Error al cambiar estado", string.IsNullOrWhiteSpace(body) ? "No se pudo actualizar el estado." : body.Trim('"'), esError: true);
+                return;
+            }
+
+            var id = reservaParaEstado.Id;
+            var est = nuevoEstadoSeleccionado;
+            mostrarModalEstado = false;
+            reservaParaEstado = null;
+
+            await CargarDatos(mostrarSpinner: false);
+            MostrarToast("Estado actualizado", $"La reserva #{id} pasó a \"{est}\".", esError: false);
+        }
+        finally
+        {
+            cambiandoEstado = false;
+        }
+    }
+
+    private void SolicitarEliminar(ReservaDTO reserva)
+    {
+        reservaAEliminar = reserva;
+        mostrarModalEliminar = true;
+    }
+
+    private void CancelarEliminar()
+    {
+        if (eliminando) return;
+        mostrarModalEliminar = false;
+        reservaAEliminar = null;
+    }
+
+    private async Task ConfirmarEliminar()
+    {
+        if (reservaAEliminar == null || eliminando) return;
+
+        eliminando = true;
+        try
+        {
+            var resp = await Http.DeleteAsync<object>($"api/Reservas/{reservaAEliminar.Id}");
+            if (resp.Error)
+            {
+                MostrarToast("No se pudo eliminar", await HttpErrorHelper.ObtenerMensajeError(resp), esError: true);
+                return;
+            }
+
+            var id = reservaAEliminar.Id;
+            mostrarModalEliminar = false;
+            reservaAEliminar = null;
+
+            await CargarDatos(mostrarSpinner: false);
+            MostrarToast("Reserva eliminada", $"Se eliminó la reserva #{id}.", esError: false);
+        }
+        finally
+        {
+            eliminando = false;
+        }
+    }
+
+    private async Task OnOperacionExitosa(string mensaje)
+    {
+        await CargarDatos(mostrarSpinner: false);
+        MostrarToast("¡Operación exitosa!", mensaje, esError: false);
+    }
+
+    private void MostrarToast(string titulo, string mensaje, bool esError)
+    {
+        tituloToast = titulo;
+        mensajeToast = mensaje;
+        esErrorToast = esError;
+        mostrarToast = true;
+    }
+
+    private static string ClaseEstado(string? estado) => (estado ?? string.Empty).ToLowerInvariant() switch
+    {
+        "confirmada" => "res-st-confirmada",
+        "en curso" => "res-st-encurso",
+        "completada" => "res-st-completada",
+        "cancelada" => "res-st-cancelada",
+        _ => "res-st-pendiente"
+    };
+
+    private static string IconoEstado(string? estado) => (estado ?? string.Empty).ToLowerInvariant() switch
+    {
+        "confirmada" => "check_circle",
+        "en curso" => "schedule",
+        "completada" => "done_all",
+        "cancelada" => "cancel",
+        _ => "hourglass_empty"
+    };
+
+    public void Dispose()
+    {
+        ctsBusqueda?.Cancel();
+        ctsBusqueda?.Dispose();
+    }
+}

@@ -32,7 +32,19 @@
         @FormatoMonedaHelper.FormatearMoneda(Cliente.SaldoPendiente)
     </td>
     <td class="col-estado text-center">
-        <SaldoBadge Saldo="@Cliente.SaldoPendiente" />
+        <SaldoBadge Saldo="@Cliente.SaldoPendiente"
+                    SemanasAtraso="@Cliente.SemanasAtraso"
+                    EstadoSemanal="@Cliente.EstadoSemanal" />
+        @if (Cliente.FechaProximoPago.HasValue)
+        {
+            <div class="small text-muted mt-1" style="font-size: 0.72rem;">
+                @if (Cliente.UltimoPagoFecha.HasValue)
+                {
+                    <span>Últ. pago: @Cliente.UltimoPagoFecha.Value.ToString("dd/MM") · </span>
+                }
+                <span>Vto: @Cliente.FechaProximoPago.Value.ToString("dd/MM")</span>
+            </div>
+        }
     </td>
     <td class="col-acciones text-end">
         <button class="btn btn-registrar-pago btn-sm d-inline-flex align-items-center gap-2"

@@ -1,0 +1,241 @@
+@using System.Globalization
+@using Proyecto2026.Server.Client.Helpers
+@using Proyecto2026.Servicios.ServicioHTTP
+@using Proyecto2026.Shared.DTO
+@inject IHttpService Http
+
+@if (Visible && Reserva != null)
+{
+    <div class="res-modal-backdrop" @onclick="Cerrar"></div>
+
+    <div class="res-modal-dialog res-modal-dialog-sm" role="dialog" aria-modal="true" aria-labelledby="tituloConvertirTrabajo">
+        <div class="res-modal-content">
+            <div class="res-modal-header">
+                <div>
+                    <h5 class="res-modal-title" id="tituloConvertirTrabajo">Confirmar y Pasar a Trabajo</h5>
+                    <span class="res-modal-subtitle">
+                        Reserva #@Reserva.Id · @(Reserva.NombreCliente ?? $"Cliente #{Reserva.ClienteId}")
+                    </span>
+                </div>
+                <button type="button" class="res-modal-close" @onclick="Cerrar" aria-label="Cerrar" disabled="@isEnviando">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="res-modal-body">
+                @if (!string.IsNullOrWhiteSpace(errorServidor))
+                {
+                    <div class="res-alert-error" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        <span>@errorServidor</span>
+                    </div>
+                }
+
+                <div class="res-info-banner mb-3">
+                    <span class="material-symbols-outlined" style="font-size: 19px;">info</span>
+                    <span>
+                        Se confirmará la reserva, se creará la obra en <strong>Trabajos y Planos</strong> y el presupuesto se sumará al saldo pendiente del cliente.
+                    </span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="convNombreObra" class="res-label">
+                            Nombre de la obra <span class="text-danger">*</span>
+                        </label>
+                        <input id="convNombreObra"
+                               type="text"
+                               class="res-input @(errorNombre != null ? "is-invalid" : "")"
+                               value="@nombreObra"
+                               @oninput="OnNombreInput"
+                               disabled="@isEnviando" />
+                        @if (errorNombre != null)
+                        {
+                            <div class="res-field-error">@errorNombre</div>
+                        }
+                    </div>
+
+                    <div class="col-12 col-sm-6">
+                        <label for="convPresupuesto" class="res-label">Presupuesto acordado</label>
+                        <div class="res-input-group">
+                            <span class="res-input-prefix">$</span>
+                            <input id="convPresupuesto"
+                                   type="number"
+                                   step="0.01"
+                                   min="0"
+                                   class="res-input res-input-with-prefix @(errorPresupuesto != null ? "is-invalid" : "")"
+                                   value="@presupuestoTexto"
+                                   @oninput="OnPresupuestoInput"
+                                   disabled="@isEnviando" />
+                        </div>
+                        @if (errorPresupuesto != null)
+                        {
+                            <div class="res-field-error">@errorPresupuesto</div>
+                        }
+                    </div>
+
+                    <div class="col-12 col-sm-6">
+                        <label for="convFechaInicio" class="res-label">
+                            Fecha de inicio <span class="text-danger">*</span>
+                        </label>
+                        <input id="convFechaInicio"
+                               type="date"
+                               class="res-input"
+                               value="@fechaInicioTexto"
+                               @onchange="OnFechaChanged"
+                               disabled="@isEnviando" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="res-modal-footer">
+                <button type="button" class="res-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
+                    Cancelar
+                </button>
+                <button type="button" class="res-btn-primary" @onclick="Confirmar" disabled="@isEnviando">
+                    @if (isEnviando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Creando trabajo...</span>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 18px;">task_alt</span>
+                        <span>Confirmar y Crear Trabajo</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public ReservaDTO? Reserva { get; set; }
+    [Parameter] public EventCallback<string> OnConvertida { get; set; }
+
+    private bool prevVisible;
+    private int? prevReservaId;
+
+    private string nombreObra = string.Empty;
+    private string presupuestoTexto = "0";
+    private string fechaInicioTexto = DateTime.Today.ToString("yyyy-MM-dd");
+
+    private string? errorNombre;
+    private string? errorPresupuesto;
+    private string? errorServidor;
+    private bool isEnviando;
+
+    protected override void OnParametersSet()
+    {
+        var currentId = Reserva?.Id;
+        if (Visible && Reserva != null && (!prevVisible || prevReservaId != currentId))
+        {
+            nombreObra = string.IsNullOrWhiteSpace(Reserva.Descripcion)
+                ? $"Obra Reserva #{Reserva.Id}"
+                : Reserva.Descripcion;
+            presupuestoTexto = Reserva.Monto > 0
+                ? Reserva.Monto.ToString("0.##", CultureInfo.InvariantCulture)
+                : "0";
+            fechaInicioTexto = Reserva.FechaInicio.ToString("yyyy-MM-dd");
+            errorNombre = null;
+            errorPresupuesto = null;
+            errorServidor = null;
+            isEnviando = false;
+        }
+        prevVisible = Visible;
+        prevReservaId = currentId;
+    }
+
+    private void OnNombreInput(ChangeEventArgs e)
+    {
+        nombreObra = e.Value?.ToString() ?? string.Empty;
+        errorNombre = null;
+        errorServidor = null;
+    }
+
+    private void OnPresupuestoInput(ChangeEventArgs e)
+    {
+        presupuestoTexto = e.Value?.ToString() ?? string.Empty;
+        errorPresupuesto = null;
+        errorServidor = null;
+    }
+
+    private void OnFechaChanged(ChangeEventArgs e)
+    {
+        fechaInicioTexto = e.Value?.ToString() ?? DateTime.Today.ToString("yyyy-MM-dd");
+    }
+
+    private async Task Confirmar()
+    {
+        if (Reserva == null || isEnviando) return;
+
+        errorNombre = null;
+        errorPresupuesto = null;
+        errorServidor = null;
+
+        if (string.IsNullOrWhiteSpace(nombreObra))
+            errorNombre = "El nombre de la obra es obligatorio.";
+
+        decimal presupuesto = 0;
+        if (!string.IsNullOrWhiteSpace(presupuestoTexto))
+        {
+            if (!decimal.TryParse(presupuestoTexto.Replace(",", "."), NumberStyles.Number, CultureInfo.InvariantCulture, out presupuesto) || presupuesto < 0)
+                errorPresupuesto = "Ingresá un presupuesto válido mayor o igual a 0.";
+        }
+
+        if (!DateTime.TryParse(fechaInicioTexto, out var fechaInicio))
+            fechaInicio = DateTime.Today;
+
+        if (errorNombre != null || errorPresupuesto != null)
+            return;
+
+        isEnviando = true;
+        try
+        {
+            var dto = new ConvertirReservaATrabajoDTO
+            {
+                NombreObra = nombreObra.Trim(),
+                Presupuesto = presupuesto,
+                FechaInicio = fechaInicio
+            };
+
+            var resp = await Http.PostAsync<ConvertirReservaATrabajoDTO, ConvertirResult>(
+                $"api/Reservas/{Reserva.Id}/convertir-trabajo",
+                dto);
+
+            if (resp.Error)
+            {
+                errorServidor = await HttpErrorHelper.ObtenerMensajeError(resp);
+                return;
+            }
+
+            var msg = resp.Dato?.Mensaje ?? $"Reserva #{Reserva.Id} confirmada y pasada a Trabajos.";
+            Visible = false;
+            await VisibleChanged.InvokeAsync(false);
+            await OnConvertida.InvokeAsync(msg);
+        }
+        catch (Exception ex)
+        {
+            errorServidor = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isEnviando = false;
+        }
+    }
+
+    private async Task Cerrar()
+    {
+        if (isEnviando) return;
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private sealed class ConvertirResult
+    {
+        public int TrabajoId { get; set; }
+        public string? Mensaje { get; set; }
+    }
+}

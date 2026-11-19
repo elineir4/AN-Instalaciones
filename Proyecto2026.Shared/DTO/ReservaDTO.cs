@@ -1,12 +1,16 @@
-﻿using System;
+﻿namespace Proyecto2026.Shared.DTO;
 
-namespace Proyecto2026.Shared.DTO
+public class ReservaDTO
 {
-    public class ReservaDTO
-    {
-        public string Descripcion { get; set; } = string.Empty;
-        public string Estados { get; set; }
-        public DateTime Fecha { get; set; }
-        public DateTime FechaInicio { get; set; }
-    }
+    public int Id { get; set; }
+    public int ClienteId { get; set; }
+    public string? NombreCliente { get; set; }
+    public string? TelefonoCliente { get; set; }
+    public string Descripcion { get; set; } = string.Empty;
+    public DateTime Fecha { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public string Estado { get; set; } = string.Empty;
+    public decimal Monto { get; set; }
+    public bool MontoSumadoAlSaldo { get; set; }
+    public int? TrabajoId { get; set; }
 }

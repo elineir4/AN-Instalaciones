@@ -11,12 +11,23 @@
 
     [Parameter] public decimal Saldo { get; set; }
     [Parameter] public decimal UmbralAlto { get; set; } = UmbralAltoDefecto;
+    [Parameter] public int SemanasAtraso { get; set; }
+    [Parameter] public string? EstadoSemanal { get; set; }
 
     private string PillClass
     {
         get
         {
             if (Saldo <= 0)
+                return "pill-al-dia";
+
+            if (SemanasAtraso > 0)
+                return "pill-deuda-alta";
+
+            if (string.Equals(EstadoSemanal, "Vence esta semana", StringComparison.OrdinalIgnoreCase))
+                return "pill-deuda-moderada";
+
+            if (!string.IsNullOrWhiteSpace(EstadoSemanal))
                 return "pill-al-dia";
 
             if (Saldo >= UmbralAlto)
@@ -32,6 +43,9 @@
         {
             if (Saldo <= 0)
                 return "Al día";
+
+            if (!string.IsNullOrWhiteSpace(EstadoSemanal))
+                return EstadoSemanal;
 
             if (Saldo >= UmbralAlto)
                 return "Deuda Alta";

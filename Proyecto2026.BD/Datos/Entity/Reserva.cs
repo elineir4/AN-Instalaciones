@@ -11,6 +11,8 @@ public class Reserva : EntityBase
     public string Estado { get; set; }
     public DateTime Fecha { get; set; }
     public DateTime FechaInicio { get; set; }
+    public decimal Monto { get; set; }
+    public bool MontoSumadoAlSaldo { get; set; }
     public int ClienteId { get; set; }
     public Cliente Cliente { get; set; }
 
