@@ -168,11 +168,15 @@
                 </div>
             </div>
 
-            <div class="mat-modal-footer">
-                <button type="button" class="mat-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
-                    Cancelar
+            <div class="mat-modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="mat-btn-secondary" @onclick="RellenarRandom" disabled="@isEnviando" title="Completar con datos aleatorios de prueba">
+                    Rellenar automáticamente
                 </button>
-                <button type="button" class="mat-btn-primary" @onclick="Guardar" disabled="@isEnviando">
+                <div class="d-flex gap-2">
+                    <button type="button" class="mat-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
+                        Cancelar
+                    </button>
+                    <button type="button" class="mat-btn-primary" @onclick="Guardar" disabled="@isEnviando">
                     @if (isEnviando)
                     {
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -183,7 +187,8 @@
                         <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
                         <span>@(EsEdicion ? "Guardar Cambios" : "Cargar Material")</span>
                     }
-                </button>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -405,6 +410,42 @@
         if (isEnviando) return;
         Visible = false;
         await VisibleChanged.InvokeAsync(false);
+    }
+
+    private void RellenarRandom()
+    {
+        var materiales = new[]
+        {
+            ("Caño Termofusión 25mm", "metros"),
+            ("Caño Termofusión 32mm", "metros"),
+            ("Codo 90° Gas Epoxi 3/4\"", "unidades"),
+            ("Te Reductora Termofusión 25x20", "unidades"),
+            ("Llave de Paso Esférica 1/2\"", "unidades"),
+            ("Sellador Anaeróbico Gas", "frascos"),
+            ("Cinta Teflón Alta Densidad", "rollos"),
+            ("Regulador de Presión Domiciliario", "unidades"),
+            ("Caño PVC Cloacal 110mm", "metros"),
+            ("Rejilla Piso Acero Inox", "unidades"),
+            ("Flexible Gas Aprobado 50cm", "unidades"),
+            ("Pegamento PVC Alta Presión", "frascos")
+        };
+        var elegido = materiales[Random.Shared.Next(materiales.Length)];
+        if (elegido.Item1 == nombreMaterial)
+            elegido = materiales[(Array.IndexOf(materiales, elegido) + 1) % materiales.Length];
+        nombreMaterial = elegido.Item1;
+        unidadMedida = elegido.Item2;
+        if (Trabajos.Count > 0)
+            trabajoIdSeleccionado = Trabajos[Random.Shared.Next(Trabajos.Count)].Id;
+        cantidadTexto = Random.Shared.Next(2, 40).ToString();
+        precioTexto = (Random.Shared.Next(3, 80) * 500).ToString();
+        fechaUsoTexto = DateTime.Today.AddDays(-Random.Shared.Next(0, 10)).ToString("yyyy-MM-dd");
+        errorNombre = null;
+        errorTrabajo = null;
+        errorCantidad = null;
+        errorUnidad = null;
+        errorPrecio = null;
+        errorFecha = null;
+        errorServidor = null;
     }
 
     private static bool TryParseDecimal(string? texto, out decimal valor)

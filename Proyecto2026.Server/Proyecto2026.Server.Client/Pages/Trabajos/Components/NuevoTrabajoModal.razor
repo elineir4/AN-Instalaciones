@@ -194,11 +194,15 @@
             </div>
 
             <!-- Footer -->
-            <div class="trb-modal-footer">
-                <button type="button" class="trb-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
-                    Cancelar
+            <div class="trb-modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="trb-btn-secondary" @onclick="RellenarRandom" disabled="@isEnviando" title="Completar con datos aleatorios de prueba">
+                    Rellenar automáticamente
                 </button>
-                <button type="button" class="trb-btn-primary" @onclick="Guardar" disabled="@isEnviando">
+                <div class="d-flex gap-2">
+                    <button type="button" class="trb-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
+                        Cancelar
+                    </button>
+                    <button type="button" class="trb-btn-primary" @onclick="Guardar" disabled="@isEnviando">
                     @if (isEnviando)
                     {
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -209,7 +213,8 @@
                         <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
                         <span>@(EsEdicion ? "Guardar Cambios" : "Crear Trabajo")</span>
                     }
-                </button>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -497,6 +502,37 @@
         if (isEnviando) return;
         Visible = false;
         await VisibleChanged.InvokeAsync(false);
+    }
+
+    private void RellenarRandom()
+    {
+        var tipos = new[]
+        {
+            "Instalación Gas Natural",
+            "Red Sanitaria Completa",
+            "Reforma Baños y Cocina",
+            "Tendido Termofusión",
+            "Instalación Calefacción Central",
+            "Conexión Cloacal y Pluvial",
+            "Montaje Sala de Calderas",
+            "Cañería Agua Fría y Caliente"
+        };
+        var lugares = new[]
+        {
+            "Edificio Norte", "Complejo Los Álamos", "Casa Central", "Torre Sur",
+            "Barrio Jardín", "Local Comercial Centro", "Duplex San Martín", "Residencia Belgrano"
+        };
+        nombreObra = $"{tipos[Random.Shared.Next(tipos.Length)]} - {lugares[Random.Shared.Next(lugares.Length)]} #{Random.Shared.Next(10, 999)}";
+        if (Clientes.Count > 0)
+            clienteIdSeleccionado = Clientes[Random.Shared.Next(Clientes.Count)].Id;
+        presupuestoTexto = (Random.Shared.Next(10, 150) * 10000).ToString();
+        fechaInicioTexto = DateTime.Today.AddDays(-Random.Shared.Next(0, 25)).ToString("yyyy-MM-dd");
+        esFinalizado = false;
+        errorNombre = null;
+        errorCliente = null;
+        errorPresupuesto = null;
+        errorFechas = null;
+        errorServidor = null;
     }
 
     private static string FormatearTamano(long bytes)

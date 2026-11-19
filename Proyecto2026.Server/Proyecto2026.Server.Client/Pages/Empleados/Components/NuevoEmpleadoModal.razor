@@ -129,24 +129,29 @@
             </div>
 
             <!-- Footer con Botones -->
-            <div class="modal-footer-custom d-flex justify-content-end gap-2 p-3">
-                <button type="button" class="btn btn-light px-4" @onclick="Cerrar" disabled="@isEnviando">
-                    Cancelar
+            <div class="modal-footer-custom d-flex justify-content-between align-items-center gap-2 p-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="RellenarRandom" disabled="@isEnviando" title="Completar con datos aleatorios de prueba">
+                    Rellenar automáticamente
                 </button>
-                <button type="button"
-                        class="btn btn-guardar-cliente px-4 d-inline-flex align-items-center gap-2"
-                        @onclick="Guardar"
-                        disabled="@isEnviando">
-                    @if (isEnviando)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span>Guardando...</span>
-                    }
-                    else
-                    {
-                        <span>Guardar</span>
-                    }
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light px-4" @onclick="Cerrar" disabled="@isEnviando">
+                        Cancelar
+                    </button>
+                    <button type="button"
+                            class="btn btn-guardar-cliente px-4 d-inline-flex align-items-center gap-2"
+                            @onclick="Guardar"
+                            disabled="@isEnviando">
+                        @if (isEnviando)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Guardando...</span>
+                        }
+                        else
+                        {
+                            <span>Guardar</span>
+                        }
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -333,5 +338,34 @@
         if (isEnviando) return;
         Visible = false;
         await OnCerrar.InvokeAsync();
+    }
+
+    private void RellenarRandom()
+    {
+        var nombres = new[]
+        {
+            "Carlos", "Diego", "Hernán", "Federico", "Ezequiel", "Mauro", "Gabriel",
+            "Rodrigo", "Leandro", "Cristian", "Sebastián", "Pablo", "Matías", "Walter"
+        };
+        var apellidos = new[]
+        {
+            "Sosa", "Romero", "Torres", "Ruiz", "Acosta", "Mendoza", "Silva",
+            "Peralta", "Quiroga", "Vega", "Herrera", "Medina", "Giménez", "Ferreyra"
+        };
+        var nuevoNombre = nombres[Random.Shared.Next(nombres.Length)];
+        if (nuevoNombre == nombre)
+            nuevoNombre = nombres[(Array.IndexOf(nombres, nuevoNombre) + 1) % nombres.Length];
+        nombre = nuevoNombre;
+        apellido = apellidos[Random.Shared.Next(apellidos.Length)];
+        telefono = $"11 {Random.Shared.Next(4000, 6999)}-{Random.Shared.Next(1000, 9999)}";
+        salario = Random.Shared.Next(10, 45) * 10000;
+        salarioInputString = salario.ToString();
+        fechaIngreso = DateTime.Today.AddDays(-Random.Shared.Next(1, 365));
+        errorNombre = null;
+        errorApellido = null;
+        errorTelefono = null;
+        errorSalario = null;
+        errorFecha = null;
+        errorServidor = null;
     }
 }

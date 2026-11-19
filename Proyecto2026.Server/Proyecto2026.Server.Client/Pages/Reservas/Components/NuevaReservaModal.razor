@@ -112,23 +112,8 @@
                         </div>
                     }
 
-                    <!-- Estado y Monto (opcional para trabajos chicos) -->
-                    <div class="col-12 col-sm-6">
-                        <label for="resEstado" class="res-label">Estado</label>
-                        <select id="resEstado"
-                                class="res-input"
-                                value="@estado"
-                                @onchange="OnEstadoChanged"
-                                disabled="@isEnviando">
-                            <option value="Pendiente">Pendiente</option>
-                            <option value="Confirmada">Confirmada</option>
-                            <option value="En Curso">En Curso</option>
-                            <option value="Completada">Completada</option>
-                            <option value="Cancelada">Cancelada</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12 col-sm-6">
+                    <!-- Monto (opcional para trabajos chicos) -->
+                    <div class="col-12">
                         <label for="resMonto" class="res-label">Monto (opcional · pedido chico)</label>
                         <div class="res-input-group">
                             <span class="res-input-prefix">$</span>
@@ -155,11 +140,15 @@
                 </div>
             </div>
 
-            <div class="res-modal-footer">
-                <button type="button" class="res-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
-                    Cancelar
+            <div class="res-modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="res-btn-secondary" @onclick="RellenarRandom" disabled="@isEnviando" title="Completar con datos aleatorios de prueba">
+                    Rellenar automáticamente
                 </button>
-                <button type="button" class="res-btn-primary" @onclick="Guardar" disabled="@isEnviando">
+                <div class="d-flex gap-2">
+                    <button type="button" class="res-btn-secondary" @onclick="Cerrar" disabled="@isEnviando">
+                        Cancelar
+                    </button>
+                    <button type="button" class="res-btn-primary" @onclick="Guardar" disabled="@isEnviando">
                     @if (isEnviando)
                     {
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -170,7 +159,8 @@
                         <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
                         <span>@(EsEdicion ? "Guardar Cambios" : "Crear Reserva")</span>
                     }
-                </button>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -268,11 +258,6 @@
     {
         horaTexto = e.Value?.ToString() ?? "09:00";
         errorFecha = null;
-    }
-
-    private void OnEstadoChanged(ChangeEventArgs e)
-    {
-        estado = e.Value?.ToString() ?? "Pendiente";
     }
 
     private void OnMontoInput(ChangeEventArgs e)
@@ -378,5 +363,41 @@
         if (isEnviando) return;
         Visible = false;
         await VisibleChanged.InvokeAsync(false);
+    }
+
+    private void RellenarRandom()
+    {
+        if (Clientes.Count > 0)
+            clienteIdSeleccionado = Clientes[Random.Shared.Next(Clientes.Count)].Id;
+
+        var motivos = new[]
+        {
+            "Inspección de Cañerías Gas",
+            "Prueba de Hermeticidad",
+            "Relevamiento Presupuesto",
+            "Instalación Termotanque Solar",
+            "Conexión Sanitaria Obra",
+            "Calibración Regulador Gas",
+            "Reparación Pérdida de Agua en Cocina",
+            "Cambio de Llave de Paso General",
+            "Limpieza y Control de Calefactor",
+            "Destapación Cañería Pluvial",
+            "Instalación Grifería y Desagüe Baño",
+            "Verificación Ventilación Reglamentaria"
+        };
+        var nuevoMotivo = motivos[Random.Shared.Next(motivos.Length)];
+        if (nuevoMotivo == descripcion)
+            nuevoMotivo = motivos[(Array.IndexOf(motivos, nuevoMotivo) + 1) % motivos.Length];
+        descripcion = nuevoMotivo;
+
+        fechaTexto = DateTime.Today.AddDays(Random.Shared.Next(0, 14)).ToString("yyyy-MM-dd");
+        horaTexto = $"{Random.Shared.Next(8, 18):D2}:{(Random.Shared.Next(2) == 0 ? "00" : "30")}";
+        estado = "Pendiente";
+        montoTexto = (Random.Shared.Next(1, 25) * 5000).ToString();
+        errorCliente = null;
+        errorDescripcion = null;
+        errorFecha = null;
+        errorMonto = null;
+        errorServidor = null;
     }
 }

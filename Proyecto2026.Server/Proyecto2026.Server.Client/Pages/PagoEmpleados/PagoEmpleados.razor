@@ -436,18 +436,26 @@
                     </div>
 
                     <!-- Acciones del Modal -->
-                    <div class="pe-modal-actions">
+                    <div class="pe-modal-actions d-flex justify-content-between align-items-center">
                         <button type="button"
                                 class="pe-btn-cancel"
-                                @onclick="CerrarModal"
-                                disabled="@enviandoPago">
-                            Cancelar
+                                @onclick="RellenarRandomPago"
+                                disabled="@enviandoPago"
+                                title="Completar con datos aleatorios de prueba">
+                            Rellenar automáticamente
                         </button>
-                        <button type="button"
-                                id="submitPaymentBtn"
-                                class="pe-btn-confirm"
-                                disabled="@(enviandoPago || ErrorValidacionMonto != null || montoLiquidar <= 0)"
-                                @onclick="ConfirmarPago">
+                        <div class="d-flex gap-2">
+                            <button type="button"
+                                    class="pe-btn-cancel"
+                                    @onclick="CerrarModal"
+                                    disabled="@enviandoPago">
+                                Cancelar
+                            </button>
+                            <button type="button"
+                                    id="submitPaymentBtn"
+                                    class="pe-btn-confirm"
+                                    disabled="@(enviandoPago || ErrorValidacionMonto != null || montoLiquidar <= 0)"
+                                    @onclick="ConfirmarPago">
                             @if (enviandoPago)
                             {
                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -458,7 +466,8 @@
                                 <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
                                 <span>@(esEdicion ? "Guardar Cambios" : "Confirmar Pago")</span>
                             }
-                        </button>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -654,6 +663,29 @@
     private System.Threading.Timer? toastTimer;
 
     private static readonly System.Globalization.CultureInfo CulturaArgentina = CrearCultura();
+
+    private void RellenarRandomPago()
+    {
+        if (listaEmpleados.Count > 0)
+            empleadoSeleccionado = listaEmpleados[Random.Shared.Next(listaEmpleados.Count)];
+
+        if (listaTrabajos.Count > 0)
+            trabajoSeleccionadoId = listaTrabajos[Random.Shared.Next(listaTrabajos.Count)].Id;
+
+        var maxSalario = empleadoSeleccionado != null && empleadoSeleccionado.Salario > 0
+            ? empleadoSeleccionado.Salario
+            : 150000;
+        var porcentajes = new[] { 0.25m, 0.5m, 0.75m, 1m };
+        montoLiquidar = Math.Max(1000m, Math.Round(maxSalario * porcentajes[Random.Shared.Next(porcentajes.Length)], 0));
+        if (empleadoSeleccionado != null && empleadoSeleccionado.Salario > 0 && montoLiquidar > empleadoSeleccionado.Salario)
+            montoLiquidar = empleadoSeleccionado.Salario;
+
+        montoInputString = montoLiquidar.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        medioPago = Random.Shared.Next(2) == 0 ? "Efectivo" : "Mercado Pago";
+        fechaPago = DateTime.Today.AddDays(-Random.Shared.Next(0, 7));
+        observaciones = $"Liquidación semanal #{Random.Shared.Next(1, 52)}";
+        errorModal = null;
+    }
 
     private static System.Globalization.CultureInfo CrearCultura()
     {

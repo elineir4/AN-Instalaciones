@@ -109,24 +109,29 @@
             </div>
 
             <!-- Footer con Botones -->
-            <div class="modal-footer-custom d-flex justify-content-end gap-2 p-3">
-                <button type="button" class="btn btn-light px-4" @onclick="Cerrar" disabled="@isEnviando">
-                    Cancelar
+            <div class="modal-footer-custom d-flex justify-content-between align-items-center gap-2 p-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="RellenarRandom" disabled="@isEnviando" title="Completar con datos aleatorios de prueba">
+                    Rellenar automáticamente
                 </button>
-                <button type="button"
-                        class="btn btn-guardar-cliente px-4 d-inline-flex align-items-center gap-2"
-                        @onclick="Guardar"
-                        disabled="@isEnviando">
-                    @if (isEnviando)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span>Guardando...</span>
-                    }
-                    else
-                    {
-                        <span>Guardar</span>
-                    }
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light px-4" @onclick="Cerrar" disabled="@isEnviando">
+                        Cancelar
+                    </button>
+                    <button type="button"
+                            class="btn btn-guardar-cliente px-4 d-inline-flex align-items-center gap-2"
+                            @onclick="Guardar"
+                            disabled="@isEnviando">
+                        @if (isEnviando)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Guardando...</span>
+                        }
+                        else
+                        {
+                            <span>Guardar</span>
+                        }
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -278,5 +283,35 @@
         if (isEnviando) return;
         Visible = false;
         await OnCerrar.InvokeAsync();
+    }
+
+    private void RellenarRandom()
+    {
+        var nombres = new[]
+        {
+            "Lucas", "Martín", "Sofía", "Valentina", "Julián", "Camila", "Mateo", "Carolina",
+            "Agustín", "Lucía", "Tomás", "Florencia", "Nicolás", "Paula", "Santiago", "Victoria",
+            "Ignacio", "Mariana", "Facundo", "Milagros"
+        };
+        var apellidos = new[]
+        {
+            "González", "Rodríguez", "Fernández", "López", "Martínez", "Pérez", "Gómez", "Díaz",
+            "Álvarez", "Castro", "Morales", "Ramos", "Benítez", "Suárez", "Cabrera", "Navarro"
+        };
+        var nuevoNombre = nombres[Random.Shared.Next(nombres.Length)];
+        if (nuevoNombre == nombre)
+            nuevoNombre = nombres[(Array.IndexOf(nombres, nuevoNombre) + 1) % nombres.Length];
+        nombre = nuevoNombre;
+        apellido = apellidos[Random.Shared.Next(apellidos.Length)];
+        var prefijos = new[] { "11", "351", "341", "221", "261" };
+        telefono = $"{prefijos[Random.Shared.Next(prefijos.Length)]} {Random.Shared.Next(4000, 6999)}-{Random.Shared.Next(1000, 9999)}";
+        var dominios = new[] { "gmail.com", "hotmail.com", "outlook.com", "yahoo.com.ar" };
+        email = $"{nombre.ToLowerInvariant()}.{apellido.ToLowerInvariant()}{Random.Shared.Next(100, 999)}@{dominios[Random.Shared.Next(dominios.Length)]}"
+            .Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u");
+        errorNombre = null;
+        errorApellido = null;
+        errorTelefono = null;
+        errorEmail = null;
+        errorServidor = null;
     }
 }

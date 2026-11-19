@@ -2,6 +2,7 @@
 @using Proyecto2026.Server.Client.Models
 @using Proyecto2026.Server.Client.Helpers
 @using Proyecto2026.Servicios.ServicioHTTP
+@using Proyecto2026.Shared.DTO
 @inject IHttpService Http
 @inject NavigationManager Nav
 
@@ -144,31 +145,45 @@
                         <span class="material-symbols-outlined header-icon-info">calendar_month</span>
                         <h2 class="panel-title fs-6 fw-bold mb-0">Próximos turnos</h2>
                     </div>
-                    <span class="badge badge-header-dinamico">@turnosPreview.Count agendados</span>
+                    <span class="badge badge-header-dinamico">@totalTurnosAgendados agendados</span>
                 </div>
 
                 <div class="panel-body px-4 py-3 flex-grow-1">
-                    <div class="turn-list">
-                        @foreach (var turno in turnosPreview)
-                        {
-                            <div class="turn-card-item">
-                                <div class="turn-top">
-                                    <span class="turn-datetime">
-                                        <span class="material-symbols-outlined">schedule</span>
-                                        <span>@turno.FechaHora</span>
-                                    </span>
-                                    <span class="status-badge @(turno.Confirmado ? "status-confirmed" : "status-pending")">
-                                        @(turno.Confirmado ? "Confirmado" : "Pendiente")
-                                    </span>
+                    @if (cargando)
+                    {
+                        <div class="empty-state">Cargando próximos turnos...</div>
+                    }
+                    else if (proximosTurnos.Count == 0)
+                    {
+                        <div class="empty-state">No hay turnos próximos agendados.</div>
+                    }
+                    else
+                    {
+                        <div class="turn-list">
+                            @foreach (var turno in proximosTurnos)
+                            {
+                                var esConfirmada = string.Equals(turno.Estado, "Confirmada", StringComparison.OrdinalIgnoreCase)
+                                    || string.Equals(turno.Estado, "En Curso", StringComparison.OrdinalIgnoreCase);
+
+                                <div class="turn-card-item" @onclick="IrAReservas" style="cursor: pointer;">
+                                    <div class="turn-top">
+                                        <span class="turn-datetime">
+                                            <span class="material-symbols-outlined">schedule</span>
+                                            <span>@FormatearFechaTurno(turno.FechaInicio)</span>
+                                        </span>
+                                        <span class="status-badge @(esConfirmada ? "status-confirmed" : "status-pending")">
+                                            @(string.IsNullOrWhiteSpace(turno.Estado) ? "Pendiente" : turno.Estado)
+                                        </span>
+                                    </div>
+                                    <div class="turn-client">@(turno.NombreCliente ?? $"Cliente #{turno.ClienteId}")</div>
+                                    <div class="turn-desc">
+                                        <span class="material-symbols-outlined">build</span>
+                                        <span>@(string.IsNullOrWhiteSpace(turno.Descripcion) ? "Visita técnica" : turno.Descripcion)</span>
+                                    </div>
                                 </div>
-                                <div class="turn-client">@turno.Cliente</div>
-                                <div class="turn-desc">
-                                    <span class="material-symbols-outlined">@turno.Icono</span>
-                                    <span>@turno.Descripcion</span>
-                                </div>
-                            </div>
-                        }
-                    </div>
+                            }
+                        </div>
+                    }
                 </div>
 
                 <div class="panel-footer px-4 py-3 text-center">
@@ -189,14 +204,8 @@
     private decimal cobradoSemanaTotal = 0m;
     private int cobradoSemanaCantidad = 0;
     private int obrasEnCursoCount = 0;
-
-    private readonly List<TurnoPreviewItem> turnosPreview =
-    [
-        new("Hoy • 10:30 hs", true, "Edificio Los Robles", "Instalación de calefón y prueba de gas", "local_fire_department"),
-        new("Hoy • 15:00 hs", true, "Residencia Ing. Valenzuela", "Revisión de conexión de gas en cocina", "water_drop"),
-        new("Mañana • 08:30 hs", false, "Complejo San Martín", "Instalación sanitaria y termofusión", "build"),
-        new("Jueves • 11:00 hs", false, "Oficinas Torre Belgrano", "Control de estanqueidad de cañería", "speed")
-    ];
+    private List<ReservaDTO> proximosTurnos = new();
+    private int totalTurnosAgendados = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -242,6 +251,27 @@
 
         try
         {
+            var respReservas = await Http.GetAsync<List<ReservaDTO>>("api/Reservas");
+            if (!respReservas.Error && respReservas.Dato != null)
+            {
+                var activas = respReservas.Dato
+                    .Where(r => !string.Equals(r.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase)
+                             && !string.Equals(r.Estado, "Completada", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(r => r.FechaInicio)
+                    .ToList();
+
+                totalTurnosAgendados = activas.Count;
+                proximosTurnos = activas.Take(4).ToList();
+            }
+        }
+        catch
+        {
+            totalTurnosAgendados = 0;
+            proximosTurnos = new();
+        }
+
+        try
+        {
             var respTrabajos = await Http.GetAsync<List<TrabajoResumenItem>>("api/trabajos");
             if (!respTrabajos.Error && respTrabajos.Dato != null)
             {
@@ -259,6 +289,19 @@
     }
 
     private void IrAPagos() => Nav.NavigateTo("/pagos");
+    private void IrAReservas() => Nav.NavigateTo("/reservas");
+
+    private static string FormatearFechaTurno(DateTime fecha)
+    {
+        var hoy = DateTime.Today;
+        var dia = fecha.Date;
+        string etiquetaDia;
+        if (dia == hoy) etiquetaDia = "Hoy";
+        else if (dia == hoy.AddDays(1)) etiquetaDia = "Mañana";
+        else etiquetaDia = fecha.ToString("dd/MM");
+
+        return $"{etiquetaDia} • {fecha:HH:mm} hs";
+    }
 
     private static string ObtenerIniciales(string nombreCompleto)
     {
@@ -279,11 +322,4 @@
         public int Id { get; set; }
         public bool Finalizado { get; set; }
     }
-
-    private sealed record TurnoPreviewItem(
-        string FechaHora,
-        bool Confirmado,
-        string Cliente,
-        string Descripcion,
-        string Icono);
 }

@@ -1,5 +1,4 @@
 @page "/reservas"
-@using System.Net.Http.Json
 @using Proyecto2026.Server.Client.Helpers
 @using Proyecto2026.Server.Client.Models
 @using Proyecto2026.Server.Client.Pages.Pagos.Components
@@ -7,7 +6,6 @@
 @using Proyecto2026.Servicios.ServicioHTTP
 @using Proyecto2026.Shared.DTO
 @inject IHttpService Http
-@inject HttpClient HttpClient
 @implements IDisposable
 
 <PageTitle>Reservas - AN Instalaciones</PageTitle>
@@ -36,7 +34,7 @@
                     disabled="@cargando"
                     @onclick="AbrirModalNuevo">
                 <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
-                <span>+ Nueva Reserva</span>
+                <span>Nueva Reserva</span>
             </button>
         </div>
     </div>
@@ -103,8 +101,6 @@
                     @onchange="OnEstadoFilterChanged">
                 <option value="">Todos los estados</option>
                 <option value="Pendiente">Pendiente</option>
-                <option value="Confirmada">Confirmada</option>
-                <option value="En Curso">En Curso</option>
                 <option value="Completada">Completada</option>
                 <option value="Cancelada">Cancelada</option>
             </select>
@@ -289,18 +285,6 @@
                                     <td class="text-end">
                                         <div class="res-actions">
                                             <button type="button"
-                                                    class="res-action-btn"
-                                                    title="Editar reserva"
-                                                    @onclick="() => AbrirModalEditar(reserva)">
-                                                <span class="material-symbols-outlined" style="font-size: 17px;">edit</span>
-                                            </button>
-                                            <button type="button"
-                                                    class="res-action-btn"
-                                                    title="Cambiar estado"
-                                                    @onclick="() => AbrirModalEstado(reserva)">
-                                                <span class="material-symbols-outlined" style="font-size: 17px;">swap_horiz</span>
-                                            </button>
-                                            <button type="button"
                                                     class="res-action-btn res-action-delete"
                                                     title="Eliminar reserva"
                                                     @onclick="() => SolicitarEliminar(reserva)">
@@ -337,49 +321,6 @@
     <ConvertirTrabajoModal @bind-Visible="mostrarModalConvertir"
                            Reserva="@reservaAConvertir"
                            OnConvertida="OnOperacionExitosa" />
-
-    <!-- Modal Cambiar Estado -->
-    @if (mostrarModalEstado && reservaParaEstado != null)
-    {
-        <div class="res-modal-backdrop" @onclick="CerrarModalEstado"></div>
-        <div class="res-modal-dialog res-modal-dialog-sm" role="dialog" aria-modal="true" aria-labelledby="tituloCambiarEstado">
-            <div class="res-modal-content">
-                <div class="res-modal-header">
-                    <div>
-                        <h5 class="res-modal-title" id="tituloCambiarEstado">Cambiar Estado</h5>
-                        <span class="res-modal-subtitle">
-                            Reserva #@reservaParaEstado.Id · @(reservaParaEstado.NombreCliente ?? $"Cliente #{reservaParaEstado.ClienteId}")
-                        </span>
-                    </div>
-                    <button type="button" class="res-modal-close" @onclick="CerrarModalEstado" disabled="@cambiandoEstado">
-                        <span class="material-symbols-outlined">close</span>
-                    </button>
-                </div>
-                <div class="res-modal-body">
-                    <label for="resNuevoEstadoSelect" class="res-label">Seleccioná el nuevo estado</label>
-                    <select id="resNuevoEstadoSelect"
-                            class="res-input"
-                            value="@nuevoEstadoSeleccionado"
-                            @onchange="OnNuevoEstadoChanged"
-                            disabled="@cambiandoEstado">
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="Confirmada">Confirmada</option>
-                        <option value="En Curso">En Curso</option>
-                        <option value="Completada">Completada</option>
-                        <option value="Cancelada">Cancelada</option>
-                    </select>
-                </div>
-                <div class="res-modal-footer">
-                    <button type="button" class="res-btn-secondary" @onclick="CerrarModalEstado" disabled="@cambiandoEstado">
-                        Cancelar
-                    </button>
-                    <button type="button" class="res-btn-primary" @onclick="ConfirmarCambioEstado" disabled="@cambiandoEstado">
-                        @(cambiandoEstado ? "Guardando..." : "Guardar Estado")
-                    </button>
-                </div>
-            </div>
-        </div>
-    }
 
     <!-- Modal Confirmar Eliminación -->
     @if (mostrarModalEliminar && reservaAEliminar != null)
@@ -445,11 +386,6 @@
 
     private bool mostrarModalConvertir;
     private ReservaDTO? reservaAConvertir;
-
-    private bool mostrarModalEstado;
-    private ReservaDTO? reservaParaEstado;
-    private string nuevoEstadoSeleccionado = "Pendiente";
-    private bool cambiandoEstado;
 
     private bool mostrarModalEliminar;
     private ReservaDTO? reservaAEliminar;
@@ -682,76 +618,10 @@
         mostrarModalReserva = true;
     }
 
-    private void AbrirModalEditar(ReservaDTO reserva)
-    {
-        reservaEnEdicion = reserva;
-        mostrarModalReserva = true;
-    }
-
     private void AbrirModalConvertir(ReservaDTO reserva)
     {
         reservaAConvertir = reserva;
         mostrarModalConvertir = true;
-    }
-
-    private void AbrirModalEstado(ReservaDTO reserva)
-    {
-        reservaParaEstado = reserva;
-        nuevoEstadoSeleccionado = string.IsNullOrWhiteSpace(reserva.Estado) ? "Pendiente" : reserva.Estado;
-        mostrarModalEstado = true;
-    }
-
-    private void OnNuevoEstadoChanged(ChangeEventArgs e)
-    {
-        nuevoEstadoSeleccionado = e.Value?.ToString() ?? "Pendiente";
-    }
-
-    private void CerrarModalEstado()
-    {
-        if (cambiandoEstado) return;
-        mostrarModalEstado = false;
-        reservaParaEstado = null;
-    }
-
-    private async Task ConfirmarCambioEstado()
-    {
-        if (reservaParaEstado == null || cambiandoEstado) return;
-
-        if (string.Equals(nuevoEstadoSeleccionado, "Confirmada", StringComparison.OrdinalIgnoreCase))
-        {
-            var reserva = reservaParaEstado;
-            mostrarModalEstado = false;
-            reservaParaEstado = null;
-            AbrirModalConvertir(reserva);
-            return;
-        }
-
-        cambiandoEstado = true;
-        try
-        {
-            var resp = await HttpClient.PatchAsJsonAsync(
-                $"api/Reservas/{reservaParaEstado.Id}/estado",
-                new CambiarEstadoDTO { NuevoEstado = nuevoEstadoSeleccionado });
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                var body = await resp.Content.ReadAsStringAsync();
-                MostrarToast("Error al cambiar estado", string.IsNullOrWhiteSpace(body) ? "No se pudo actualizar el estado." : body.Trim('"'), esError: true);
-                return;
-            }
-
-            var id = reservaParaEstado.Id;
-            var est = nuevoEstadoSeleccionado;
-            mostrarModalEstado = false;
-            reservaParaEstado = null;
-
-            await CargarDatos(mostrarSpinner: false);
-            MostrarToast("Estado actualizado", $"La reserva #{id} pasó a \"{est}\".", esError: false);
-        }
-        finally
-        {
-            cambiandoEstado = false;
-        }
     }
 
     private void SolicitarEliminar(ReservaDTO reserva)

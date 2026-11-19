@@ -157,9 +157,7 @@
         {
             using var content = new MultipartFormDataContent();
             using var stream = archivoSeleccionado.OpenReadStream(MaxFileSize);
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            using var fileContent = new ByteArrayContent(ms.ToArray());
+            using var fileContent = new StreamContent(stream);
             fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
             content.Add(fileContent, "archivo", archivoSeleccionado.Name);
 

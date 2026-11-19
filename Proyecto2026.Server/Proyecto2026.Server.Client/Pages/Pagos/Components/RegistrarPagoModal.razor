@@ -156,24 +156,29 @@
             </div>
 
             <!-- Footer con Botones -->
-            <div class="modal-footer-custom d-flex justify-content-end gap-2 p-3">
-                <button type="button" class="btn btn-light px-3" @onclick="Cerrar" disabled="@isEnviando">
-                    Cancelar
+            <div class="modal-footer-custom d-flex justify-content-between align-items-center gap-2 p-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="RellenarRandom" disabled="@(isEnviando || cargandoSaldo)" title="Completar con datos aleatorios de prueba">
+                    Rellenar automáticamente
                 </button>
-                <button type="button"
-                        class="btn btn-confirmar-pago px-4 d-inline-flex align-items-center gap-2"
-                        @onclick="ConfirmarPago"
-                        disabled="@(isEnviando || cargandoSaldo)">
-                    @if (isEnviando)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span>Registrando...</span>
-                    }
-                    else
-                    {
-                        <span>Confirmar pago</span>
-                    }
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light px-3" @onclick="Cerrar" disabled="@isEnviando">
+                        Cancelar
+                    </button>
+                    <button type="button"
+                            class="btn btn-confirmar-pago px-4 d-inline-flex align-items-center gap-2"
+                            @onclick="ConfirmarPago"
+                            disabled="@(isEnviando || cargandoSaldo)">
+                        @if (isEnviando)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Registrando...</span>
+                        }
+                        else
+                        {
+                            <span>Confirmar pago</span>
+                        }
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -410,5 +415,31 @@
         if (isEnviando) return;
         Visible = false;
         await OnCerrar.InvokeAsync();
+    }
+
+    private void RellenarRandom()
+    {
+        if (saldoActual <= 0) return;
+
+        var porcentaje = new[] { 0.15m, 0.25m, 0.35m, 0.5m, 0.75m, 1m }[Random.Shared.Next(6)];
+        var nuevoMonto = Math.Max(1m, Math.Round(saldoActual * porcentaje, 2));
+        if (nuevoMonto > saldoActual) nuevoMonto = saldoActual;
+        if (nuevoMonto == montoAbonado && saldoActual > 1)
+            nuevoMonto = Math.Max(1m, Math.Round(saldoActual * 0.4m, 2));
+        montoAbonado = nuevoMonto;
+        montoInputString = montoAbonado.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+        var medios = new[] { "Efectivo", "Transferencia Bancaria", "Tarjeta de Débito", "Tarjeta de Crédito", "Cheque" };
+        var nuevoMedio = medios[Random.Shared.Next(medios.Length)];
+        if (nuevoMedio == medioPago)
+            nuevoMedio = medios[(Array.IndexOf(medios, nuevoMedio) + 1) % medios.Length];
+        medioPago = nuevoMedio;
+
+        if (trabajosCliente.Count > 0)
+            trabajoIdSeleccionado = trabajosCliente[Random.Shared.Next(trabajosCliente.Count)].Id;
+
+        errorMonto = null;
+        errorMedioPago = null;
+        errorServidor = null;
     }
 }
